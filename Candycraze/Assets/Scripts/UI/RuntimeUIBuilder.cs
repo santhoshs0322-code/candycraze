@@ -63,82 +63,15 @@ namespace CandyCraze
 
         // ════════════════════════════════════════════════════
         // MAIN MENU
+        // ────────────────────────────────────────────────────
+        // The candy-land home screen is built by CandyHomeMenu,
+        // which recreates the reference design as fully interactive
+        // Unity UI elements with original, code-generated art.
         // ════════════════════════════════════════════════════
         void BuildMainMenu(Canvas cv)
         {
-            var root = cv.GetComponent<RectTransform>();
-
-            // BG
-            var bg = Pnl("BG", root, V2(0,0), V2(1,1), V2(0,0), V2(0,0));
-            Clr(bg, C_BG);
-            Pnl("TopGrad", bg.RT(), V2(0,0.75f), V2(1,1), V2(0,0), V2(0,0));
-            Clr(bg.transform.Find("TopGrad").gameObject, new Color(0.25f,0.1f,0.5f,0.45f));
-
-            // HUD
-            float hudH = Mathf.Clamp(H*0.075f, 54f, 90f);
-            var hud = Pnl("HUD", root, V2(0,1), V2(1,1),
-                V2(0,-SafeTop-hudH), V2(0,-SafeTop));
-            Clr(hud, C_DARK);
-            Outline(hud, C_GOLD.WithAlpha(0.4f), 2f);
-            CoinsText = Txt("Coins", hud.RT(), V2(0,0),V2(0.5f,1),V2(0,0),V2(0,0),
-                "✦ 0", H*0.022f, C_GOLD, TextAnchor.MiddleCenter);
-            LivesText = Txt("Lives", hud.RT(), V2(0.5f,0),V2(1,1),V2(0,0),V2(0,0),
-                "♥♥♥♥♥", H*0.022f, C_RED, TextAnchor.MiddleCenter);
-
-            // Title
-            float tsz = Mathf.Clamp(W*0.13f, 52f, 96f);
-            Txt("TitleShadow", root, V2(0.5f,0.5f),V2(0.5f,0.5f),
-                V2(4,-H*0.22f-4), V2(W*0.9f,tsz+12),
-                "CandyCraze", tsz, new Color(0.7f,0.3f,0,0.6f), TextAnchor.MiddleCenter, bold:true);
-            Txt("Title", root, V2(0.5f,0.5f),V2(0.5f,0.5f),
-                V2(0,H*0.22f), V2(W*0.9f,tsz+8),
-                "CandyCraze", tsz, C_GOLD, TextAnchor.MiddleCenter, bold:true);
-            Txt("Tag", root, V2(0.5f,0.5f),V2(0.5f,0.5f),
-                V2(0,H*0.17f), V2(W*0.7f,36),
-                "Match • Blast • Win", W*0.038f, C_W70, TextAnchor.MiddleCenter);
-
-            // Gem deco row
-            GemRow(root, V2(0, H*0.1f));
-
-            // PLAY button
-            float bw=Mathf.Clamp(W*0.72f,240,440), bh=Mathf.Clamp(H*0.085f,64,100);
-            PlayButton = Btn("PlayBtn", root, V2(0.5f,0.5f),V2(0.5f,0.5f),
-                V2(0,H*0.02f), V2(bw,bh),
-                "▶  PLAY", W*0.07f, C_GREEN, C_GDARK, C_WHITE);
-            Outline(PlayButton.gameObject, C_GOLD, 2.5f);
-            Shadow(PlayButton.gameObject);
-
-            // SHOP + DAILY row
-            float sw2=Mathf.Clamp(W*0.43f,150,260), sh2=Mathf.Clamp(H*0.07f,54,82);
-            float sy = H*0.02f - bh*0.5f - sh2*0.5f - H*0.02f;
-            float sf = W*0.045f;
-            ShopButton = Btn("ShopBtn", root, V2(0.5f,0.5f),V2(0.5f,0.5f),
-                V2(-sw2*0.52f,sy), V2(sw2,sh2),
-                "SHOP", sf, C_PANEL, C_DARK, C_GOLD);
-            Outline(ShopButton.gameObject, C_GOLD.WithAlpha(0.6f), 2f);
-            DailyButton = Btn("DayBtn", root, V2(0.5f,0.5f),V2(0.5f,0.5f),
-                V2(sw2*0.52f,sy), V2(sw2,sh2),
-                "DAILY", sf, C_PANEL, C_DARK, C_GOLD);
-            Outline(DailyButton.gameObject, C_GOLD.WithAlpha(0.6f), 2f);
-
-            // SETTINGS
-            float setH=Mathf.Clamp(H*0.06f,48,74);
-            float setY=-H*0.5f+SafeBottom+setH*0.5f+H*0.02f;
-            SettingsButton = Btn("SetBtn", root, V2(0.5f,0.5f),V2(0.5f,0.5f),
-                V2(0,setY), V2(sw2,setH),
-                "SETTINGS", sf*0.9f, C_DARK, C_BG, C_W70);
-            Outline(SettingsButton.gameObject, C_W40, 1.5f);
-
-            // Wire MainMenuController
-            var ctrl = FindObjectOfType<MainMenuController>();
-            if (ctrl != null)
-            {
-                PlayButton?.onClick.AddListener(ctrl.OnPlayPressed);
-                ShopButton?.onClick.AddListener(ctrl.OnShopPressed);
-                DailyButton?.onClick.AddListener(ctrl.OnDailyRewardPressed);
-                SettingsButton?.onClick.AddListener(ctrl.OnSettingsPressed);
-                ctrl.UpdateHUDRefs(CoinsText, LivesText);
-            }
+            var home = gameObject.GetComponent<CandyHomeMenu>() ?? gameObject.AddComponent<CandyHomeMenu>();
+            home.Build(cv);
         }
 
         // ════════════════════════════════════════════════════
