@@ -1,0 +1,38 @@
+# Unity generated folders
+[Ll]ibrary/
+[Tt]emp/
+[Ll]ogs/
+[Uu]ser[Ss]ettings/
+[Pp]ackages/
+[Oo]bj/
+[Bb]uild/
+[Bb]uilds/
+[Bb]urstCache/
+[Uu]serSettings/
+[Pp]ackageCache/
+[Cc]andycraze_BurstDebugInformation_DoNotShip/
+[ProjectSettings]/
+
+# Local project clutter and generated output
+README.md
+RELEASE_BUILD.md
+SCENE_SETUP.md
+builds.apk
+*.apk
+*.aab
+*.unitypackage
+*.pid
+
+# Unity editor / local files
+.vscode/
+*.user
+*.csproj.user
+*.sln.DotSettings.user
+*.pdb
+*.mdb
+*.dll
+
+# OS generated files
+.DS_Store
+Thumbs.db
+Desktop.ini
