@@ -18,7 +18,6 @@ namespace CandyCraze
         [SerializeField] private GameObject _settingsPanel;
         [SerializeField] private GameObject _shopPanel;
         [SerializeField] private GameObject _dailyRewardPanel;
-        [SerializeField] private GameObject _shotsPanel;
 
         [Header("Settings Buttons")]
         [SerializeField] private Text _soundBtnText;
@@ -122,28 +121,6 @@ namespace CandyCraze
             }
         }
 
-        public void OnShotsPressed()
-        {
-            AudioManager.Instance?.PlaySFX(AudioManager.SFX.Button);
-            if (_shotsPanel == null) { Debug.Log("[Menu] Shots panel not assigned."); return; }
-            bool isOpen = _shotsPanel.activeSelf;
-            HideAllPanels();
-            if (!isOpen) _shotsPanel.SetActive(true);
-        }
-
-        /// <summary>
-        /// Called by CandyHomeMenu after runtime UI is built so the
-        /// dynamically-created overlay panels are wired to the menu
-        /// buttons. Only fills references that were left null.
-        /// </summary>
-        public void InjectMenuPanels(GameObject settings, GameObject daily, GameObject shots)
-        {
-            if (_settingsPanel == null)    _settingsPanel = settings;
-            if (_dailyRewardPanel == null) _dailyRewardPanel = daily;
-            if (_shotsPanel == null)       _shotsPanel = shots;
-            HideAllPanels();
-        }
-
         public void OnSoundToggle()
         {
             AudioManager.Instance?.ToggleSound();
@@ -170,7 +147,6 @@ namespace CandyCraze
             if (_settingsPanel    != null) _settingsPanel.SetActive(false);
             if (_shopPanel        != null) _shopPanel.SetActive(false);
             if (_dailyRewardPanel != null) _dailyRewardPanel.SetActive(false);
-            if (_shotsPanel       != null) _shotsPanel.SetActive(false);
         }
 
         // ── Called by RuntimeUIBuilder ───────────────────────────
