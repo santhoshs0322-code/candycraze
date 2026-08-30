@@ -65,15 +65,22 @@
   <ItemGroup>
     <Compile Include="Assets\Scripts\Editor\GemPrefabCreator.cs" />
     <Compile Include="Assets\Scripts\Editor\BackgroundGenerator.cs" />
-    <Compile Include="Assets\Scripts\Editor\BoosterIconSetup.cs" />
     <Compile Include="Assets\Scripts\Editor\LevelDataSetup.cs" />
-    <Compile Include="Assets\Scripts\Editor\AppIconSetup.cs" />
-    <Compile Include="Assets\Scripts\Editor\MassLevelSetup.cs" />
+    <Compile Include="Assets\Scripts\Editor\LevelRulesSetup.cs" />
     <Compile Include="Assets\Scripts\Editor\AndroidBuildSetup.cs" />
-    <Compile Include="Assets\Scripts\Editor\GemVisualSetup.cs" />
-    <Compile Include="Assets\Scripts\Editor\SceneBuilder.cs" />
+    <Compile Include="Assets\Scripts\Editor\FixGemPrefab.cs" />
     <Compile Include="Assets\Scripts\Editor\CandyCrazeSetup.cs" />
     <Compile Include="Assets\Scripts\Editor\FinalChecklist.cs" />
+    <Compile Include="Assets\Scripts\Editor\ButtonSpriteGenerator.cs" />
+    <Compile Include="Assets\Scripts\Editor\BackgroundSetup.cs" />
+    <Compile Include="Assets\Scripts\Editor\BoosterIconSetup.cs" />
+    <Compile Include="Assets\Scripts\Editor\AppIconSetup.cs" />
+    <Compile Include="Assets\Scripts\Editor\MassLevelSetup.cs" />
+    <Compile Include="Assets\Scripts\Editor\PowerIconGenerator.cs" />
+    <Compile Include="Assets\Scripts\Editor\GemVisualSetup.cs" />
+    <Compile Include="Assets\Scripts\Editor\SceneBuilder.cs" />
+    <Compile Include="Assets\Scripts\Editor\LogoGenerator.cs" />
+    <Compile Include="Assets\Scripts\Editor\CandyUIGenerator.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="Assets\Scripts\Editor\CandyCrazeEditor.asmdef" />
@@ -447,6 +454,14 @@
       <HintPath>Library\PackageCache\com.unity.collections@1.2.4\Unity.Collections.LowLevel.ILSupport\Unity.Collections.LowLevel.ILSupport.dll</HintPath>
       <Private>False</Private>
     </Reference>
+    <Reference Include="Unity.Analytics.Tracker">
+      <HintPath>Library\PackageCache\com.unity.analytics@3.8.1\Unity.Analytics.Tracker.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="Unity.Analytics.Editor">
+      <HintPath>Library\PackageCache\com.unity.analytics@3.8.1\Unity.Analytics.Editor.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
     <Reference Include="Unity.Plastic.Antlr3.Runtime">
       <HintPath>Library\PackageCache\com.unity.collab-proxy@2.12.4\Lib\Editor\Unity.Plastic.Antlr3.Runtime.dll</HintPath>
       <Private>False</Private>
@@ -475,8 +490,16 @@
       <HintPath>Library\PackageCache\com.unity.visualscripting@1.9.4\Runtime\VisualScripting.Flow\Dependencies\NCalc\Unity.VisualScripting.Antlr3.Runtime.dll</HintPath>
       <Private>False</Private>
     </Reference>
+    <Reference Include="Newtonsoft.Json">
+      <HintPath>Library\PackageCache\com.unity.nuget.newtonsoft-json@3.2.1\Runtime\Newtonsoft.Json.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
     <Reference Include="Unity.VisualScripting.TextureAssets">
       <HintPath>Library\PackageCache\com.unity.visualscripting@1.9.4\Editor\VisualScripting.Core\EditorAssetResources\Unity.VisualScripting.TextureAssets.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="Unity.Analytics.StandardEvents">
+      <HintPath>Library\PackageCache\com.unity.analytics@3.8.1\AnalyticsStandardEvents\Unity.Analytics.StandardEvents.dll</HintPath>
       <Private>False</Private>
     </Reference>
     <Reference Include="nunit.framework">

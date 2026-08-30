@@ -63,54 +63,56 @@
     <Analyzer Include="C:\Program Files\Unity\Hub\Editor\2022.3.47f1\Editor\Data\Tools\Unity.SourceGenerators\Unity.Properties.SourceGenerator.dll" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="Assets\Scripts\Save\SaveData.cs" />
     <Compile Include="Assets\Scripts\Core\Bootstrap.cs" />
     <Compile Include="Assets\Scripts\UI\MainMenuController.cs" />
-    <Compile Include="Assets\Scripts\Board\MatchDetector.cs" />
-    <Compile Include="Assets\Scripts\UI\DailyRewardPanelController.cs" />
     <Compile Include="Assets\Scripts\UI\LevelNodeUI.cs" />
     <Compile Include="Assets\Scripts\UI\RuntimeUIBuilder.cs" />
     <Compile Include="Assets\Scripts\Economy\LivesManager.cs" />
-    <Compile Include="Assets\Scripts\Levels\LevelManager.cs" />
-    <Compile Include="Assets\Scripts\Board\TileManager.cs" />
-    <Compile Include="Assets\Scripts\Board\GravityController.cs" />
     <Compile Include="Assets\Scripts\Gameplay\SpecialPieceHandler.cs" />
     <Compile Include="Assets\Scripts\Economy\DailyRewardManager.cs" />
     <Compile Include="Assets\Scripts\Economy\ShopManager.cs" />
     <Compile Include="Assets\Scripts\Save\SaveManager.cs" />
-    <Compile Include="Assets\Scripts\Utils\PerformanceManager.cs" />
-    <Compile Include="Assets\Scripts\Utils\HapticFeedback.cs" />
     <Compile Include="Assets\Scripts\Utils\ScreenSafeArea.cs" />
-    <Compile Include="Assets\Scripts\Core\GameManager.cs" />
-    <Compile Include="Assets\Scripts\UI\ShopPanelController.cs" />
     <Compile Include="Assets\Scripts\Levels\GameConfig.cs" />
     <Compile Include="Assets\Scripts\UI\LevelMapController.cs" />
     <Compile Include="Assets\Scripts\Board\BoardManager.cs" />
+    <Compile Include="Assets\Scripts\UI\UIStyle.cs" />
     <Compile Include="Assets\Scripts\UI\LoseScreenController.cs" />
     <Compile Include="Assets\Scripts\Levels\ScoreManager.cs" />
+    <Compile Include="Assets\Scripts\Economy\CurrencyManager.cs" />
+    <Compile Include="Assets\Scripts\UI\PremiumUIAnimator.cs" />
+    <Compile Include="Assets\Scripts\Gameplay\ScreenShake.cs" />
+    <Compile Include="Assets\Scripts\Economy\BoosterManager.cs" />
+    <Compile Include="Assets\Scripts\Audio\AudioManager.cs" />
+    <Compile Include="Assets\Scripts\UI\LoadingScreenController.cs" />
+    <Compile Include="Assets\Scripts\IAP\IAPManager.cs" />
+    <Compile Include="Assets\Scripts\UI\HUDController.cs" />
+    <Compile Include="Assets\Scripts\Save\SaveData.cs" />
+    <Compile Include="Assets\Scripts\Board\MatchDetector.cs" />
+    <Compile Include="Assets\Scripts\UI\DailyRewardPanelController.cs" />
+    <Compile Include="Assets\Scripts\Levels\LevelManager.cs" />
+    <Compile Include="Assets\Scripts\Board\TileManager.cs" />
+    <Compile Include="Assets\Scripts\Board\GravityController.cs" />
+    <Compile Include="Assets\Scripts\Utils\PerformanceManager.cs" />
+    <Compile Include="Assets\Scripts\Utils\HapticFeedback.cs" />
+    <Compile Include="Assets\Scripts\Core\GameManager.cs" />
+    <Compile Include="Assets\Scripts\UI\ShopPanelController.cs" />
     <Compile Include="Assets\Scripts\Ads\AdManager.cs" />
     <Compile Include="Assets\Scripts\UI\BoosterHUDController.cs" />
     <Compile Include="Assets\Scripts\Utils\Extensions.cs" />
     <Compile Include="Assets\Scripts\Gameplay\SwapController.cs" />
     <Compile Include="Assets\Scripts\UI\WinScreenController.cs" />
-    <Compile Include="Assets\Scripts\Economy\CurrencyManager.cs" />
     <Compile Include="Assets\Scripts\Board\BoardScaler.cs" />
     <Compile Include="Assets\Scripts\Levels\ObjectiveManager.cs" />
-    <Compile Include="Assets\Scripts\UI\PremiumUIAnimator.cs" />
+    <Compile Include="Assets\Scripts\Utils\CameraBackgroundFitter.cs" />
     <Compile Include="Assets\Scripts\Gameplay\BlastAnimator.cs" />
-    <Compile Include="Assets\Scripts\Gameplay\ScreenShake.cs" />
     <Compile Include="Assets\Scripts\UI\UIManager.cs" />
-    <Compile Include="Assets\Scripts\Economy\BoosterManager.cs" />
-    <Compile Include="Assets\Scripts\Audio\AudioManager.cs" />
     <Compile Include="Assets\Scripts\Utils\Constants.cs" />
     <Compile Include="Assets\Scripts\Utils\ObjectPool.cs" />
     <Compile Include="Assets\Scripts\Levels\GemDefinition.cs" />
-    <Compile Include="Assets\Scripts\UI\LoadingScreenController.cs" />
-    <Compile Include="Assets\Scripts\IAP\IAPManager.cs" />
     <Compile Include="Assets\Scripts\Board\GemView.cs" />
     <Compile Include="Assets\Scripts\Gameplay\ParticleManager.cs" />
     <Compile Include="Assets\Scripts\Levels\LevelData.cs" />
-    <Compile Include="Assets\Scripts\UI\HUDController.cs" />
     <Compile Include="Assets\Scripts\Core\SceneController.cs" />
   </ItemGroup>
   <ItemGroup>
@@ -469,6 +471,14 @@
       <HintPath>Library\PackageCache\com.unity.collections@1.2.4\Unity.Collections.LowLevel.ILSupport\Unity.Collections.LowLevel.ILSupport.dll</HintPath>
       <Private>False</Private>
     </Reference>
+    <Reference Include="Unity.Analytics.Tracker">
+      <HintPath>Library\PackageCache\com.unity.analytics@3.8.1\Unity.Analytics.Tracker.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="Unity.Analytics.Editor">
+      <HintPath>Library\PackageCache\com.unity.analytics@3.8.1\Unity.Analytics.Editor.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
     <Reference Include="Unity.Plastic.Antlr3.Runtime">
       <HintPath>Library\PackageCache\com.unity.collab-proxy@2.12.4\Lib\Editor\Unity.Plastic.Antlr3.Runtime.dll</HintPath>
       <Private>False</Private>
@@ -497,8 +507,16 @@
       <HintPath>Library\PackageCache\com.unity.visualscripting@1.9.4\Runtime\VisualScripting.Flow\Dependencies\NCalc\Unity.VisualScripting.Antlr3.Runtime.dll</HintPath>
       <Private>False</Private>
     </Reference>
+    <Reference Include="Newtonsoft.Json">
+      <HintPath>Library\PackageCache\com.unity.nuget.newtonsoft-json@3.2.1\Runtime\Newtonsoft.Json.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
     <Reference Include="Unity.VisualScripting.TextureAssets">
       <HintPath>Library\PackageCache\com.unity.visualscripting@1.9.4\Editor\VisualScripting.Core\EditorAssetResources\Unity.VisualScripting.TextureAssets.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="Unity.Analytics.StandardEvents">
+      <HintPath>Library\PackageCache\com.unity.analytics@3.8.1\AnalyticsStandardEvents\Unity.Analytics.StandardEvents.dll</HintPath>
       <Private>False</Private>
     </Reference>
     <Reference Include="Unity.Android.Types">

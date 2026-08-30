@@ -53,13 +53,42 @@ namespace CandyCraze
         public void Initialise(LevelData levelData)
         {
             _levelData = levelData;
+
+            // Defensive: ensure all dependencies exist
+            if (_tileManager       == null) _tileManager       = FindObjectOfType<TileManager>(true);
+            if (_matchDetector     == null) _matchDetector     = FindObjectOfType<MatchDetector>(true);
+            if (_gravityController == null) _gravityController = FindObjectOfType<GravityController>(true);
+            if (_config            == null) _config            = Resources.Load<GameConfig>("GameConfig");
+
+            if (_boardRoot == null)
+            {
+                var br = GameObject.Find("BoardRoot");
+                if (br != null) _boardRoot = br.transform;
+                else
+                {
+                    var newBr = new GameObject("BoardRoot");
+                    newBr.transform.position = Vector3.zero;
+                    _boardRoot = newBr.transform;
+                }
+            }
+
+            if (_tileManager == null)
+            {
+                Debug.LogError("[BoardManager] TileManager missing — cannot spawn gems!");
+                return;
+            }
+
             _grid = new GemView[Rows, Cols];
+            _boardRoot.DestroyAllChildren();
 
-            if (_boardRoot != null)
-                _boardRoot.DestroyAllChildren();
-
+            Debug.Log($"[BoardManager] Initialising {Rows}x{Cols} board at {_boardRoot.position}");
             FillBoard();
             ResolveStartingMatches();
+
+            // Spawn 1-2 random Color Balls at start (based on level difficulty)
+            SpawnStartingColorBalls();
+
+            Debug.Log($"[BoardManager] Board filled. BoardRoot has {_boardRoot.childCount} gems.");
         }
 
         public bool TrySwap(int rowA, int colA, int rowB, int colB)
@@ -92,19 +121,68 @@ namespace CandyCraze
             return origin + new Vector3(col * Constants.CELL_SIZE, row * Constants.CELL_SIZE, 0f);
         }
 
+        // ── Starting Color Balls ─────────────────────────────
+
+        private void SpawnStartingColorBalls()
+        {
+            // Give 1 color ball to start; harder levels get 2
+            int levelNum = _levelData != null ? _levelData.LevelNumber : 1;
+            int count = levelNum > 30 ? 2 : 1;
+
+            for (int i = 0; i < count; i++)
+            {
+                // Pick a random cell that has a normal gem
+                int tries = 20;
+                while (tries-- > 0)
+                {
+                    int r = Random.Range(0, Rows);
+                    int c = Random.Range(0, Cols);
+                    var existing = _grid[r, c];
+                    if (existing != null && existing.SpecialType == GemSpecialType.None)
+                    {
+                        int typeID = existing.GemTypeID;
+                        // Destroy the normal gem and replace with a color ball
+                        _grid[r, c] = null;
+                        Destroy(existing.gameObject);
+
+                        GemDefinition def = _config != null ? _config.GetGemDefinition(typeID) : null;
+                        if (def == null) def = _tileManager.GetRandomGemDefinition(_levelData, r, c);
+                        SpawnGem(def, r, c, GemSpecialType.ColorCrystal);
+                        break;
+                    }
+                }
+            }
+            Debug.Log($"[BoardManager] Spawned {count} starting color ball(s).");
+        }
+
         // ── Board Fill ───────────────────────────────────────
 
         private void FillBoard()
         {
+            int spawned = 0, skipped = 0, nullDef = 0;
             for (int r = 0; r < Rows; r++)
             for (int c = 0; c < Cols; c++)
             {
                 if (_grid[r, c] != null) continue;
+
                 TileData tile = _levelData.GetTileData(r, c);
-                if (tile.Type == TileType.Empty || tile.Type == TileType.Locked) continue;
+                if (tile != null && (tile.Type == TileType.Empty || tile.Type == TileType.Locked))
+                {
+                    skipped++;
+                    continue;
+                }
+
                 GemDefinition def = _tileManager.GetRandomGemDefinition(_levelData, r, c);
-                SpawnGem(def, r, c);
+                if (def == null)
+                {
+                    nullDef++;
+                    continue;
+                }
+
+                var gem = SpawnGem(def, r, c);
+                if (gem != null) spawned++;
             }
+            Debug.Log($"[BoardManager] FillBoard: spawned={spawned} skipped={skipped} nullDef={nullDef}");
         }
 
         private GemView SpawnGem(GemDefinition def, int row, int col,
@@ -113,19 +191,15 @@ namespace CandyCraze
             if (def == null) return null;
 
             Vector3 spawnPos = CellToWorld(row, col);
-            Vector3 abovePos = spawnPos + Vector3.up * (Rows + 1) * Constants.CELL_SIZE;
 
-            GameObject go = _tileManager.CreateGemObject(def, abovePos, _boardRoot);
+            // Spawn directly at final position (no fall animation for reliability)
+            GameObject go = _tileManager.CreateGemObject(def, spawnPos, _boardRoot);
             if (go == null) return null;
 
             GemView gem = go.GetComponent<GemView>();
             gem.Initialise(def, row, col, special);
+            gem.SnapTo(spawnPos);
             _grid[row, col] = gem;
-
-            float dur = Constants.GEM_FALL_SPEED > 0
-                ? Vector3.Distance(abovePos, spawnPos) / Constants.GEM_FALL_SPEED
-                : 0.3f;
-            gem.MoveTo(spawnPos, dur);
 
             return gem;
         }
@@ -180,9 +254,7 @@ namespace CandyCraze
                     yield break;
                 }
 
-                // Check for special piece creation BEFORE destroying
-                CheckAndCreateSpecials(matches);
-
+                // ResolveMatches now handles special creation internally
                 GameManager.Instance?.ConsumeMove();
                 yield return StartCoroutine(ResolveMatches(matches, cascadeLevel: 0));
             }
@@ -196,18 +268,38 @@ namespace CandyCraze
 
             AudioManager.Instance?.PlaySFX(AudioManager.SFX.SpecialPiece);
 
-            List<GemView> affected;
+            List<GemView> affected = new List<GemView>();
 
-            if (special.SpecialType == GemSpecialType.ColorCrystal && swappedWith != null)
+            bool isColorBall  = special.SpecialType == GemSpecialType.ColorCrystal;
+            bool otherIsBall  = swappedWith != null &&
+                                swappedWith.SpecialType == GemSpecialType.ColorCrystal;
+
+            if (isColorBall && otherIsBall)
             {
-                affected = new List<GemView>();
+                // ── Color Ball + Color Ball → CLEAR ENTIRE BOARD ──
                 for (int r = 0; r < Rows; r++)
                 for (int c = 0; c < Cols; c++)
-                    if (_grid[r, c] != null && _grid[r, c].GemTypeID == swappedWith.GemTypeID)
+                    if (_grid[r, c] != null)
                         affected.Add(_grid[r, c]);
+
+                ScreenShake.Instance?.ShakeHeavy();
+                HapticFeedback.Heavy();
+            }
+            else if (isColorBall && swappedWith != null)
+            {
+                // ── Color Ball + normal gem → remove all of that colour ──
+                int targetType = swappedWith.GemTypeID;
+                for (int r = 0; r < Rows; r++)
+                for (int c = 0; c < Cols; c++)
+                    if (_grid[r, c] != null && _grid[r, c].GemTypeID == targetType)
+                        affected.Add(_grid[r, c]);
+
+                // Also destroy the color ball itself
+                if (!affected.Contains(special)) affected.Add(special);
             }
             else
             {
+                // Line Blast / Area Bomb
                 affected = _specialHandler.GetAffectedGems(special, _grid, Rows, Cols);
             }
 
@@ -228,9 +320,30 @@ namespace CandyCraze
 
         // ── Match Resolution ─────────────────────────────────
 
+        // Pending special pieces to create after destruction
+        private struct PendingSpecial { public int row, col, typeID; public GemSpecialType type; }
+        private List<PendingSpecial> _pendingSpecials = new List<PendingSpecial>();
+
         private IEnumerator ResolveMatches(List<List<GemView>> matches, int cascadeLevel)
         {
-            // Collect all gems to destroy
+            _pendingSpecials.Clear();
+
+            // Determine which groups create specials — reserve their spawn cell
+            foreach (var group in matches)
+            {
+                GemSpecialType special = SpecialPieceHandler.DetermineSpecialType(group);
+                Debug.Log($"[BoardManager] Match group size={group.Count} → special={special}");
+                if (special == GemSpecialType.None) continue;
+
+                GemView centre = group[group.Count / 2];
+                _pendingSpecials.Add(new PendingSpecial {
+                    row = centre.Row, col = centre.Col,
+                    typeID = centre.GemTypeID, type = special
+                });
+                Debug.Log($"[BoardManager] Reserved {special} at ({centre.Row},{centre.Col})");
+            }
+
+            // Collect all gems to destroy (ALL matched gems removed)
             var toDestroy = new List<GemView>();
             foreach (var group in matches)
                 foreach (var gem in group)
@@ -305,6 +418,25 @@ namespace CandyCraze
             }
             yield return new WaitUntil(() => pending <= 0);
 
+            // ── Spawn special pieces in their reserved cells NOW ──
+            // (before gravity, so they stay in the correct spot)
+            if (_pendingSpecials.Count > 0)
+            {
+                foreach (var ps in _pendingSpecials)
+                {
+                    if (_grid[ps.row, ps.col] != null) continue; // occupied somehow
+                    GemDefinition def = _config != null ? _config.GetGemDefinition(ps.typeID) : null;
+                    if (def == null) def = _tileManager.GetRandomGemDefinition(_levelData, ps.row, ps.col);
+                    var special = SpawnGem(def, ps.row, ps.col, ps.type);
+                    if (special != null)
+                    {
+                        AudioManager.Instance?.PlaySFX(AudioManager.SFX.SpecialPiece);
+                        Debug.Log($"[BoardManager] Created {ps.type} at ({ps.row},{ps.col})");
+                    }
+                }
+                _pendingSpecials.Clear();
+            }
+
             // Gravity + refill
             yield return StartCoroutine(_gravityController.ApplyGravity(_grid, Rows, Cols, this));
             yield return StartCoroutine(RefillBoard());
@@ -315,7 +447,6 @@ namespace CandyCraze
             var newMatches = _matchDetector.FindAllMatches(_grid, Rows, Cols);
             if (newMatches.Count > 0)
             {
-                CheckAndCreateSpecials(newMatches);
                 yield return StartCoroutine(ResolveMatches(newMatches, cascadeLevel + 1));
             }
             else
@@ -326,45 +457,6 @@ namespace CandyCraze
         }
 
         // ── Special Piece Creation ───────────────────────────
-
-        /// <summary>
-        /// Checks match groups for special-piece-creating patterns.
-        /// Removes creating gem from grid and spawns a special in its place.
-        /// </summary>
-        private void CheckAndCreateSpecials(List<List<GemView>> matches)
-        {
-            foreach (var group in matches)
-            {
-                GemSpecialType special = SpecialPieceHandler.DetermineSpecialType(group);
-                if (special == GemSpecialType.None) continue;
-
-                // Pick centre gem of the group as the spawn point
-                GemView centre = group[group.Count / 2];
-                int row = centre.Row, col = centre.Col;
-                int typeID = centre.GemTypeID;
-
-                // Mark this gem to NOT be destroyed — it becomes the special
-                group.Remove(centre);
-                centre.IsMatched = false;
-
-                // Schedule replacement after destruction
-                StartCoroutine(SpawnSpecialAfterDelay(typeID, row, col, special, 0.35f));
-            }
-        }
-
-        private IEnumerator SpawnSpecialAfterDelay(int typeID, int row, int col,
-                                                    GemSpecialType special, float delay)
-        {
-            yield return new WaitForSeconds(delay);
-
-            if (_grid[row, col] != null) yield break; // Already refilled
-
-            GemDefinition def = _config?.GetGemDefinition(typeID);
-            if (def == null) yield break;
-
-            SpawnGem(def, row, col, special);
-            AudioManager.Instance?.PlaySFX(AudioManager.SFX.SpecialPiece);
-        }
 
         // ── Refill ───────────────────────────────────────────
 

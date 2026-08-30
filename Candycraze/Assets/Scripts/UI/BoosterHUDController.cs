@@ -78,10 +78,20 @@ namespace CandyCraze
         private void OnBoosterActivated(BoosterType type)
         {
             RefreshUI();
-            // Highlight the active booster button
-            SetButtonColor(_hammerBtn,     type == BoosterType.Hammer     ? _activeColor : GetColor(BoosterType.Hammer));
-            SetButtonColor(_rowBlastBtn,   type == BoosterType.RowBlast   ? _activeColor : GetColor(BoosterType.RowBlast));
-            SetButtonColor(_colorBlastBtn, type == BoosterType.ColorBlast ? _activeColor : GetColor(BoosterType.ColorBlast));
+            // Highlight the active booster with a gold glow; others keep
+            // their own candy color (handled in RefreshUI).
+            HighlightActive(_hammerBtn,     type == BoosterType.Hammer);
+            HighlightActive(_rowBlastBtn,   type == BoosterType.RowBlast);
+            HighlightActive(_shuffleBtn,    type == BoosterType.Shuffle);
+            HighlightActive(_extraMovesBtn, type == BoosterType.ExtraMoves);
+            HighlightActive(_colorBlastBtn, type == BoosterType.ColorBlast);
+        }
+
+        private void HighlightActive(Button btn, bool active)
+        {
+            if (btn == null) return;
+            if (active) SetButtonColor(btn, _activeColor);
+            else SetButtonAlpha(btn, 1f);
         }
 
         private void OnBoosterCancelled() => RefreshUI();
@@ -103,11 +113,45 @@ namespace CandyCraze
             if (btn == null) return;
             int count = BoosterManager.Instance?.GetCount(type) ?? 0;
 
-            if (countTxt != null) countTxt.text = count > 0 ? $"x{count}" : "";
+            // Find the count label — assigned, direct child, nested badge,
+            // or any descendant named "Label".
+            if (countTxt == null)
+            {
+                var lbl = btn.transform.Find("Label")
+                       ?? btn.transform.Find("CountBadge/Label");
+                if (lbl != null) countTxt = lbl.GetComponent<Text>();
+                if (countTxt == null)
+                {
+                    foreach (var t in btn.GetComponentsInChildren<Text>(true))
+                        if (t.name == "Label") { countTxt = t; break; }
+                }
+            }
+            if (countTxt != null) countTxt.text = $"x{count}";
 
-            SetButtonColor(btn, count > 0 ? _normalColor : _emptyColor);
+            // Preserve each booster's own candy color (set at build time).
+            // Just fade the whole slot when empty so the design stays intact.
+            SetButtonAlpha(btn, count > 0 ? 1f : 0.45f);
             btn.interactable = count > 0 &&
-                (GameManager.Instance?.State == GameState.Playing);
+                (GameManager.Instance?.State == GameState.Playing ||
+                 GameManager.Instance?.State == GameState.WaitingForBoard);
+        }
+
+        // Capture each button's original (candy) color once so we can
+        // restore it instead of overwriting with a generic blue/grey.
+        private readonly System.Collections.Generic.Dictionary<Button, Color> _baseColors
+            = new System.Collections.Generic.Dictionary<Button, Color>();
+
+        private void SetButtonAlpha(Button btn, float alpha)
+        {
+            if (btn == null) return;
+            var img = btn.GetComponent<Image>();
+            if (img == null) return;
+            if (!_baseColors.TryGetValue(btn, out var baseCol))
+            {
+                baseCol = img.color;
+                _baseColors[btn] = baseCol;
+            }
+            img.color = new Color(baseCol.r, baseCol.g, baseCol.b, alpha);
         }
 
         private void SetButtonColor(Button btn, Color col)

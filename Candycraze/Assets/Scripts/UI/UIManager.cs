@@ -21,6 +21,7 @@ namespace CandyCraze
         [SerializeField] private Text   _scoreText;
         [SerializeField] private Text   _movesText;
         [SerializeField] private Text   _objectiveText;
+        [SerializeField] private Image  _objectiveIcon;   // gem to collect
         [SerializeField] private Text   _livesText;
 
         [Header("Combo Text")]
@@ -67,12 +68,17 @@ namespace CandyCraze
             var sm = FindObjectOfType<ScoreManager>();
             if (sm != null) sm.OnScoreChanged.AddListener(UpdateScore);
 
-            var om = FindObjectOfType<ObjectiveManager>();
-            if (om != null) om.OnObjectivesUpdated.AddListener(UpdateObjectives);
+            _cachedOM = FindObjectOfType<ObjectiveManager>();
+            if (_cachedOM != null) _cachedOM.OnObjectivesUpdated.AddListener(UpdateObjectives);
 
             HideAllPanels();
             if (_comboText != null) _comboText.gameObject.SetActive(false);
             UpdateLivesDisplay();
+
+            // Show tasks and moves immediately
+            Invoke(nameof(UpdateObjectives), 0.2f);
+            if (GameManager.Instance != null)
+                UpdateMoves(GameManager.Instance.MovesRemaining);
         }
 
         private void OnDestroy()
@@ -128,8 +134,12 @@ namespace CandyCraze
             if (lm != null && lm.HasNextLevel())
             {
                 lm.LoadNextLevel();
-                GameManager.Instance?.StartLevel();
                 HideAllPanels();
+                // Re-cache objective manager for the new level
+                _cachedOM = FindObjectOfType<ObjectiveManager>();
+                GameManager.Instance?.StartLevel();
+                UpdateLivesDisplay();
+                Invoke(nameof(UpdateObjectives), 0.2f);
             }
             else
             {
@@ -157,20 +167,179 @@ namespace CandyCraze
             if (_movesText != null) _movesText.text = moves.ToString();
         }
 
+        private ObjectiveManager _cachedOM;
+
         private void UpdateObjectives()
         {
             if (_objectiveText == null) return;
-            var om = FindObjectOfType<ObjectiveManager>();
-            if (om == null) return;
+            if (_cachedOM == null) _cachedOM = FindObjectOfType<ObjectiveManager>();
+            if (_cachedOM == null) return;
 
-            var sb = new System.Text.StringBuilder();
-            foreach (var obj in om.GetAllObjectives())
+            var objectives = _cachedOM.GetAllObjectives();
+            if (objectives == null || objectives.Count == 0)
             {
+                // No objectives loaded yet — keep a friendly placeholder
+                _objectiveText.text = "Match the gems!";
+                if (_objectiveIcon != null) _objectiveIcon.enabled = false;
+                return;
+            }
+
+            // Show the gem icon for the first "collect gem" objective.
+            UpdateObjectiveIcon(objectives);
+
+            // Build a SHORT, stacked task list — one objective per line.
+            // The score is already shown in the top SCORE chip, so we only
+            // include a score line when there is NO collect objective.
+            bool hasCollect = false;
+            foreach (var o in objectives)
+                if (o?.Data != null && o.Data.Type == ObjectiveType.CollectGemType)
+                { hasCollect = true; break; }
+
+            var lines = new System.Collections.Generic.List<string>();
+            foreach (var obj in objectives)
+            {
+                if (obj?.Data == null) continue;
+
+                // Skip the redundant score objective when a collect goal
+                // exists (score is visible in the HUD chip already).
+                if (obj.Data.Type == ObjectiveType.ReachScore && hasCollect)
+                    continue;
+
                 int target  = obj.Target;
                 int current = Mathf.Min(obj.Current, target);
-                sb.AppendLine($"{obj.Data.Description}: {current}/{target}");
+                string tick = obj.IsComplete ? "✓ " : "";
+
+                // For collect-gem goals, show ONLY the count — the gem IMAGE
+                // beside it already tells the player which gem. e.g. "0/9".
+                // For other goals (score/blockers, no icon), keep a word label.
+                if (obj.Data.Type == ObjectiveType.CollectGemType)
+                    lines.Add($"{tick}{current}/{target}");
+                else
+                    lines.Add($"{tick}{ShortObjectiveLabel(obj)}  {current}/{target}");
             }
-            _objectiveText.text = sb.ToString().TrimEnd();
+
+            if (lines.Count == 0) lines.Add("Match the gems!");
+            _objectiveText.text = string.Join("\n", lines);
+        }
+
+        // Compact word label for objectives WITHOUT an icon (score/blockers).
+        private string ShortObjectiveLabel(ObjectiveProgress obj)
+        {
+            switch (obj.Data.Type)
+            {
+                case ObjectiveType.ReachScore:
+                    return "Reach Score";
+                case ObjectiveType.ClearObstacles:
+                    return "Clear Blockers";
+                default:
+                    return "Goal";
+            }
+        }
+
+        // Cache gem definitions once (loaded from Resources/Gems).
+        private GemDefinition[] _gemDefs;
+
+        private void UpdateObjectiveIcon(System.Collections.Generic.List<ObjectiveProgress> objectives)
+        {
+            if (_objectiveIcon == null) return;
+
+            // Find the first gem-collection objective
+            ObjectiveProgress gemObj = null;
+            foreach (var o in objectives)
+            {
+                if (o?.Data != null && o.Data.Type == ObjectiveType.CollectGemType)
+                { gemObj = o; break; }
+            }
+
+            // Score-only level: hide the gem icon and let the text use the
+            // FULL bar width, centered, so it isn't tiny/squished.
+            if (gemObj == null)
+            {
+                _objectiveIcon.enabled = false;
+                if (_objectiveText != null)
+                {
+                    var rt = _objectiveText.rectTransform;
+                    rt.anchorMin = new Vector2(0.06f, 0.06f);
+                    rt.anchorMax = new Vector2(0.94f, 0.62f);
+                    rt.offsetMin = Vector2.zero; rt.offsetMax = Vector2.zero;
+                    _objectiveText.alignment = TextAnchor.MiddleCenter;
+                }
+                return;
+            }
+
+            // Collect-gem level: text sits in a narrow box to the RIGHT of
+            // the gem icon, left-aligned so gem + count read as one unit.
+            if (_objectiveText != null)
+            {
+                var rt = _objectiveText.rectTransform;
+                rt.anchorMin = new Vector2(0.45f, 0.06f);
+                rt.anchorMax = new Vector2(0.66f, 0.62f);
+                rt.offsetMin = Vector2.zero; rt.offsetMax = Vector2.zero;
+                _objectiveText.alignment = TextAnchor.MiddleLeft;
+            }
+
+            if (_gemDefs == null || _gemDefs.Length == 0)
+                _gemDefs = Resources.LoadAll<GemDefinition>("Gems");
+
+            Sprite gemSprite = null;
+            Color  gemColor  = Color.white;
+            if (_gemDefs != null)
+            {
+                foreach (var def in _gemDefs)
+                {
+                    if (def != null && def.GemTypeID == gemObj.Data.GemTypeID)
+                    {
+                        gemSprite = def.NormalSprite;
+                        gemColor  = def.GemColor;
+                        break;
+                    }
+                }
+            }
+
+            if (gemSprite == null)
+            {
+                // No gem sprite found — use a colored circle so there is
+                // always a visible gem indicator next to the count.
+                gemSprite = Resources.Load<Sprite>("UI/Circle");
+                _objectiveIcon.color = gemColor;
+            }
+            else
+            {
+                _objectiveIcon.color = Color.white;   // sprite already colored
+            }
+
+            _objectiveIcon.sprite  = gemSprite;
+            _objectiveIcon.enabled = true;
+        }
+
+        // Build a readable task label when a level has no Description text.
+        private string DescribeObjective(ObjectiveProgress obj)
+        {
+            if (obj?.Data == null) return "Complete the goal";
+            switch (obj.Data.Type)
+            {
+                case ObjectiveType.ReachScore:     return "Reach score";
+                case ObjectiveType.CollectGemType: return "Collect gems";
+                case ObjectiveType.ClearObstacles: return "Clear blockers";
+                default:                           return "Complete the goal";
+            }
+        }
+
+        // Keep HUD fresh every frame — always show current moves & tasks
+        private void Update()
+        {
+            if (GameManager.Instance == null) return;
+
+            // Live moves counter
+            if (_movesText != null)
+                _movesText.text = GameManager.Instance.MovesRemaining.ToString();
+
+            // Live level number
+            if (_livesText != null)
+                _livesText.text = $"Lv {LevelManager.SelectedLevelNumber}";
+
+            // Live task progress
+            UpdateObjectives();
         }
 
         private void ShowWinScreen()
@@ -184,17 +353,20 @@ namespace CandyCraze
             if (sm != null && _winScoreText != null)
                 _winScoreText.text = sm.CurrentScore.ToString("N0");
 
-            if (sm != null && lm != null && _starImages != null)
+            // Calculate stars using moves efficiency + score
+            int stars = 1;
+            if (sm != null && lm != null && GameManager.Instance != null)
             {
-                int stars = sm.GetStars(lm.CurrentLevel);
-                for (int i = 0; i < _starImages.Length; i++)
-                    if (_starImages[i] != null)
-                        _starImages[i].color = i < stars ? Color.yellow : Color.grey.WithAlpha(0.4f);
+                int limit = lm.CurrentLevel.MoveLimit;
+                int used  = limit - GameManager.Instance.MovesRemaining;
+                stars = sm.GetStarsWithMoves(lm.CurrentLevel, used, limit);
             }
+
+            if (_starImages != null)
+                StartCoroutine(AnimateWinStars(stars));
 
             if (sm != null && lm != null && SaveManager.Instance != null)
             {
-                int stars = sm.GetStars(lm.CurrentLevel);
                 int coins = CalculateCoins(stars);
                 SaveManager.Instance.Data.SetLevelComplete(lm.CurrentLevel.LevelNumber, stars, sm.CurrentScore);
                 SaveManager.Instance.Data.Coins += coins;
@@ -202,6 +374,60 @@ namespace CandyCraze
             }
 
             AudioManager.Instance?.PlaySFX(AudioManager.SFX.LevelWin);
+        }
+
+        // Star reveal: earned stars pop in one-by-one with a bounce
+        private IEnumerator AnimateWinStars(int stars)
+        {
+            Color gold = new Color(1f, 0.85f, 0.2f);
+            Color dim  = new Color(0.35f, 0.35f, 0.45f, 0.6f);
+
+            // Reset: empty stars dim & normal, earned stars hidden (scale 0)
+            for (int i = 0; i < _starImages.Length; i++)
+            {
+                if (_starImages[i] == null) continue;
+                if (i < stars)
+                {
+                    _starImages[i].color = gold;
+                    _starImages[i].transform.localScale = Vector3.zero;
+                }
+                else
+                {
+                    _starImages[i].color = dim;
+                    _starImages[i].transform.localScale = Vector3.one;
+                }
+            }
+
+            // Pop each earned star with a slight delay
+            for (int i = 0; i < _starImages.Length && i < stars; i++)
+            {
+                if (_starImages[i] == null) continue;
+                yield return new WaitForSecondsRealtime(0.28f);
+                AudioManager.Instance?.PlaySFX(AudioManager.SFX.Combo);
+                yield return StartCoroutine(PopStar(_starImages[i].transform));
+            }
+        }
+
+        private IEnumerator PopStar(Transform t)
+        {
+            float elapsed = 0f, dur = 0.45f;
+            while (elapsed < dur)
+            {
+                elapsed += Time.unscaledDeltaTime;
+                float p = Mathf.Clamp01(elapsed / dur);
+                // ease-out back (overshoot then settle)
+                float s = EaseOutBack(p);
+                t.localScale = Vector3.one * s;
+                yield return null;
+            }
+            t.localScale = Vector3.one;
+        }
+
+        private static float EaseOutBack(float x)
+        {
+            const float c1 = 1.70158f;
+            const float c3 = c1 + 1f;
+            return 1f + c3 * Mathf.Pow(x - 1f, 3) + c1 * Mathf.Pow(x - 1f, 2);
         }
 
         private void ShowLoseScreen()
@@ -213,29 +439,18 @@ namespace CandyCraze
             if (sm != null && _loseScoreText != null)
                 _loseScoreText.text = sm.CurrentScore.ToString("N0");
 
-            if (SaveManager.Instance != null)
-            {
-                var data = SaveManager.Instance.Data;
-                if (data.Lives > 0)
-                {
-                    data.Lives--;
-                    data.LastLifeLostTicks = System.DateTime.UtcNow.Ticks;
-                    SaveManager.Instance.Save();
-                }
-            }
+            // Lives system removed — no deduction
 
             AudioManager.Instance?.PlaySFX(AudioManager.SFX.LevelFail);
         }
 
         private void UpdateLivesDisplay()
         {
-            if (_livesText == null || SaveManager.Instance == null) return;
-            int lives = SaveManager.Instance.Data.Lives;
-            string hearts = "";
-            for (int i = 0; i < Constants.MAX_LIVES; i++)
-                hearts += i < lives ? "♥" : "♡";
-            _livesText.text = hearts;
-            _livesText.color = lives > 1 ? Color.red : new Color(1f,0.3f,0.3f);
+            if (_livesText == null) return;
+            // Read the currently-selected level (static, always current)
+            int levelNum = LevelManager.SelectedLevelNumber;
+            _livesText.text = $"Lv {levelNum}";
+            _livesText.color = new Color(1f, 0.85f, 0.2f);
         }
 
         private void HideAllPanels()

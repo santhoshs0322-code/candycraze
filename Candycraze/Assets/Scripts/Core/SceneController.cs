@@ -47,10 +47,17 @@ namespace CandyCraze
 
         public static void NavigateTo(string sceneName)
         {
-            if (Instance != null)
-                Instance.Load(sceneName);
-            else
+            Debug.Log($"[SceneController] NavigateTo: {sceneName}");
+            // Direct load — most reliable on mobile
+            Time.timeScale = 1f;
+            try
+            {
                 SceneManager.LoadScene(sceneName);
+            }
+            catch (System.Exception e)
+            {
+                Debug.LogError($"[SceneController] Failed to load {sceneName}: {e.Message}");
+            }
         }
 
         // ── Coroutine ────────────────────────────────────────

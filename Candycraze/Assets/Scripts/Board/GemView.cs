@@ -61,16 +61,28 @@ namespace CandyCraze
             Row = row; Col = col;
             IsMatched = false;
 
-            // Apply sprite
-            _sr.sprite = def.NormalSprite != null ? def.NormalSprite : GetFallback();
-            _sr.color  = Color.white;
+            // Ensure SpriteRenderer exists (defensive)
+            if (_sr == null) _sr = GetComponent<SpriteRenderer>();
+            if (_sr == null) _sr = gameObject.AddComponent<SpriteRenderer>();
 
-            // Set glow to gem colour (invisible until selected)
+            // Apply sprite — the glossy sprite already has colour baked in
+            if (def.NormalSprite != null)
+            {
+                _sr.sprite = def.NormalSprite;
+                _sr.color  = Color.white;  // don't tint — sprite has the gem colour
+            }
+            else
+            {
+                _sr.sprite = GetFallback();
+                _sr.color  = def.GemColor;
+            }
+            _sr.sortingOrder = 5;
+
+            // Glow (optional)
             if (_glowSr != null)
             {
                 _glowSr.sprite = _sr.sprite;
-                _glowSr.color  = new Color(def.GemColor.r, def.GemColor.g,
-                                           def.GemColor.b, 0f);
+                _glowSr.color  = new Color(def.GemColor.r, def.GemColor.g, def.GemColor.b, 0f);
             }
             if (_highlightSr != null)
             {
@@ -78,16 +90,15 @@ namespace CandyCraze
                 _highlightSr.color  = new Color(1f,1f,1f,0f);
             }
 
-            // Special visual
-            ApplySpecialTint();
+            // Set scale to 1 immediately — visible right away
+            transform.localScale = Vector3.one;
 
-            // Spawn animation
-            transform.localScale = Vector3.zero;
-            if (_spawnCoroutine != null) StopCoroutine(_spawnCoroutine);
-            _spawnCoroutine = StartCoroutine(SpawnAnim());
-
-            // Start idle glow after spawn
-            StartCoroutine(StartIdleAfterSpawn());
+            // Optional pop animation on top
+            if (gameObject.activeInHierarchy)
+            {
+                if (_spawnCoroutine != null) StopCoroutine(_spawnCoroutine);
+                _spawnCoroutine = StartCoroutine(SpawnAnim());
+            }
         }
 
         // ── Selection ────────────────────────────────────────
@@ -273,8 +284,11 @@ namespace CandyCraze
                     StartCoroutine(SpecialPulse(new Color(1f, 0.4f, 0.1f)));
                     break;
                 case GemSpecialType.ColorCrystal:
+                    // Candy Crush style color bomb — dark sphere with rainbow sprinkles
+                    _sr.sprite = GetColorBombSprite();
                     _sr.color = Color.white;
-                    StartCoroutine(RainbowPulse());
+                    transform.localScale = Vector3.one * 1.1f;  // slightly bigger
+                    StartCoroutine(ColorBombSpin());
                     break;
             }
         }
@@ -293,20 +307,84 @@ namespace CandyCraze
             }
         }
 
-        private IEnumerator RainbowPulse()
+        // Color bomb spin + pulse — makes it clearly special
+        private IEnumerator ColorBombSpin()
         {
-            float hue = 0f;
             while (true)
             {
-                hue = (hue + Time.deltaTime * 0.8f) % 1f;
-                Color rainbow = Color.HSVToRGB(hue, 0.8f, 1f);
-                _sr.color = Color.Lerp(Color.white, rainbow, 0.6f);
-                if (_glowSr != null) _glowSr.color = rainbow.WithAlpha(0.6f);
-                float s = 1f + Mathf.Sin(Time.time * 5f) * 0.06f;
+                // Slow rotation
+                transform.Rotate(0f, 0f, 40f * Time.deltaTime);
+                // Gentle pulse
+                float s = 1.1f + Mathf.Sin(Time.time * 3f) * 0.08f;
                 transform.localScale = Vector3.one * s;
+                // Glow cycles rainbow
+                if (_glowSr != null)
+                {
+                    Color rb = Color.HSVToRGB((Time.time * 0.3f) % 1f, 0.9f, 1f);
+                    _glowSr.color = rb.WithAlpha(0.5f + Mathf.Sin(Time.time*4f)*0.2f);
+                }
                 yield return null;
             }
         }
+
+        // ── Color Bomb Sprite (Candy Crush style) ────────────
+        private static Sprite _colorBombSprite;
+        private static Sprite GetColorBombSprite()
+        {
+            if (_colorBombSprite != null) return _colorBombSprite;
+
+            int size = 128;
+            var tex = new Texture2D(size, size, TextureFormat.RGBA32, false);
+            for (int y = 0; y < size; y++)
+            for (int x = 0; x < size; x++)
+            {
+                float u = x/(float)(size-1)*2f-1f;
+                float v = y/(float)(size-1)*2f-1f;
+                float r = Mathf.Sqrt(u*u + v*v);
+
+                if (r > 1f) { tex.SetPixel(x,y,Color.clear); continue; }
+
+                // Dark sphere base (near black with shading)
+                float light = Mathf.Clamp01(1f - (u*0.4f - v*0.5f + r*0.4f));
+                Color c = new Color(0.08f, 0.08f, 0.12f) * (0.5f + light);
+
+                // Rainbow sprinkles scattered on surface
+                float angle = Mathf.Atan2(v, u);
+                float hash = Fract(Mathf.Sin(x*12.9f + y*78.2f) * 43758.5f);
+                if (hash > 0.88f && r < 0.85f)
+                {
+                    // Colored sprinkle dot
+                    Color sprinkle = Color.HSVToRGB(Fract(hash * 6f), 0.9f, 1f);
+                    c = sprinkle;
+                }
+
+                // Rainbow ring around the equator
+                float ringDist = Mathf.Abs(r - 0.6f);
+                if (ringDist < 0.12f)
+                {
+                    float hue = (angle / (Mathf.PI * 2f) + 1f) % 1f;
+                    Color ring = Color.HSVToRGB(hue, 0.85f, 1f);
+                    float ringA = 1f - ringDist / 0.12f;
+                    c = Color.Lerp(c, ring, ringA * 0.7f);
+                }
+
+                // Bright specular highlight top-left
+                float hl = Mathf.Max(0f, 1f - Mathf.Sqrt((u+0.35f)*(u+0.35f)+(v-0.4f)*(v-0.4f))*3f);
+                c = Color.Lerp(c, Color.white, hl*hl*0.8f);
+
+                // Soft edge
+                float alpha = r < 0.92f ? 1f : Mathf.Clamp01((1f-r)/0.08f);
+                c.r=Mathf.Clamp01(c.r); c.g=Mathf.Clamp01(c.g); c.b=Mathf.Clamp01(c.b);
+                c.a = alpha;
+                tex.SetPixel(x, y, c);
+            }
+            tex.Apply();
+            tex.filterMode = FilterMode.Bilinear;
+            _colorBombSprite = Sprite.Create(tex, new Rect(0,0,size,size), new Vector2(0.5f,0.5f), size);
+            return _colorBombSprite;
+        }
+
+        private static float Fract(float x) => x - Mathf.Floor(x);
 
         // ── Fallback sprite ───────────────────────────────────
         private static Sprite GetFallback()

@@ -69,6 +69,13 @@ namespace CandyCraze
 
         private void Start()
         {
+            // Delay one frame so all managers' Awake/Start complete first
+            StartCoroutine(StartLevelDelayed());
+        }
+
+        private System.Collections.IEnumerator StartLevelDelayed()
+        {
+            yield return null; // wait one frame
             StartLevel();
         }
 
@@ -77,19 +84,37 @@ namespace CandyCraze
         /// <summary>Called by Bootstrap / LevelManager to kick off a level.</summary>
         public void StartLevel()
         {
+            // Re-find any missing managers (include inactive)
+            if (_levelManager    == null) _levelManager    = FindObjectOfType<LevelManager>(true);
+            if (_scoreManager    == null) _scoreManager    = FindObjectOfType<ScoreManager>(true);
+            if (_objectiveManager== null) _objectiveManager= FindObjectOfType<ObjectiveManager>(true);
+            if (_boardManager    == null) _boardManager    = FindObjectOfType<BoardManager>(true);
+
+            if (_levelManager == null)
+            {
+                Debug.LogError("[GameManager] LevelManager missing in scene!");
+                return;
+            }
+
             LevelData data = _levelManager.CurrentLevel;
             if (data == null)
             {
-                Debug.LogError("[GameManager] No LevelData loaded!");
+                Debug.LogError("[GameManager] No LevelData loaded! " +
+                    "GameConfig may be empty or level number invalid.");
                 return;
             }
 
             _movesRemaining = data.MoveLimit;
             State = GameState.Playing;
 
-            _scoreManager.Reset();
-            _objectiveManager.Initialise(data);
-            _boardManager.Initialise(data);
+            if (_scoreManager != null)     _scoreManager.Reset();
+            else Debug.LogWarning("[GameManager] ScoreManager missing.");
+
+            if (_objectiveManager != null) _objectiveManager.Initialise(data);
+            else Debug.LogWarning("[GameManager] ObjectiveManager missing.");
+
+            if (_boardManager != null)     _boardManager.Initialise(data);
+            else Debug.LogError("[GameManager] BoardManager missing — board won't spawn!");
 
             OnMovesChanged.Invoke(_movesRemaining);
             Debug.Log($"[GameManager] Started level {data.LevelNumber} — {_movesRemaining} moves.");
@@ -101,11 +126,13 @@ namespace CandyCraze
         /// </summary>
         public void ConsumeMove()
         {
-            if (State != GameState.Playing) return;
+            // Allow during Playing OR WaitingForBoard (swap in progress)
+            if (State == GameState.Won || State == GameState.Lost || State == GameState.Paused)
+                return;
 
             _movesRemaining = Mathf.Max(0, _movesRemaining - 1);
             OnMovesChanged.Invoke(_movesRemaining);
-            Debug.Log($"[GameManager] Moves remaining: {_movesRemaining}");
+            Debug.Log($"[GameManager] Move used. Remaining: {_movesRemaining}");
         }
 
         /// <summary>

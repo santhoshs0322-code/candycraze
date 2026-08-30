@@ -17,9 +17,9 @@ namespace CandyCraze
         [SerializeField] private float _cellSize      = 1.0f;
 
         [Header("Margin (world units)")]
-        [SerializeField] private float _sidePadding   = 0.3f;  // left/right
-        [SerializeField] private float _topPadding    = 1.8f;  // for HUD
-        [SerializeField] private float _bottomPadding = 1.2f;  // for booster bar
+        [SerializeField] private float _sidePadding   = 0.6f;  // left/right breathing room
+        [SerializeField] private float _topPadding    = 3.0f;  // space for HUD + objectives
+        [SerializeField] private float _bottomPadding = 2.2f;  // space for booster bar
 
         [Header("Board Root")]
         [SerializeField] private Transform _boardRoot;
@@ -40,44 +40,47 @@ namespace CandyCraze
 
         public void FitBoardToScreen()
         {
+            if (_cam == null) _cam = GetComponent<Camera>();
             if (_cam == null) return;
 
-            float boardW = _boardCols * _cellSize;
-            float boardH = _boardRows * _cellSize;
+            // Gems occupy centres from (0,0) to (cols-1, rows-1).
+            // The board visually spans (-0.5) to (cols-0.5) in each axis.
+            float boardW = _boardCols * _cellSize;   // 8 units wide
+            float boardH = _boardRows * _cellSize;   // 8 units tall
 
-            // Total world height needed
-            float totalH = boardH + _topPadding + _bottomPadding;
-            // Total world width needed
-            float totalW = boardW + _sidePadding * 2f;
+            float aspect = (float)Screen.width / Mathf.Max(1, Screen.height);
 
-            // Camera aspect ratio
-            float aspect = (float)Screen.width / Screen.height;
+            // Space reserved for HUD (top) and booster bar (bottom), in world units
+            float topUI    = _topPadding;
+            float bottomUI = _bottomPadding;
 
-            // Fit by height
-            float sizeByH = totalH / 2f;
-            // Fit by width
-            float sizeByW = totalW / (2f * aspect);
+            // Required ortho size to fit board width within screen width
+            float sizeForWidth  = (boardW * 0.5f + _sidePadding) / aspect;
+            // Required ortho size to fit board height + UI within screen height
+            float sizeForHeight = (boardH * 0.5f) + (topUI + bottomUI) * 0.5f;
 
-            // Use whichever is larger (ensures everything is visible)
-            float orthoSize = Mathf.Max(sizeByH, sizeByW);
+            float orthoSize = Mathf.Max(sizeForWidth, sizeForHeight);
             _cam.orthographicSize = orthoSize;
 
-            // Centre the board horizontally and vertically
-            // Board spans from (0,0) to (boardW, boardH)
-            // We want it centred with padding above for HUD
-            float centreX = boardW / 2f;
-            float centreY = boardH / 2f - (_topPadding - _bottomPadding) / 2f;
+            // Board centre in world space:
+            // gems span centres 0..(cols-1), so geometric centre = (cols-1)/2
+            float boardCentreX = (_boardCols - 1) * _cellSize * 0.5f;
+            float boardCentreY = (_boardRows - 1) * _cellSize * 0.5f;
 
-            _cam.transform.position = new Vector3(centreX, centreY, -10f);
+            // Shift camera vertically so board sits between top HUD and bottom bar
+            float verticalShift = (topUI - bottomUI) * 0.5f;
 
-            // Also position the board root
+            _cam.transform.position = new Vector3(
+                boardCentreX,
+                boardCentreY + verticalShift,
+                -10f);
+
             if (_boardRoot != null)
                 _boardRoot.position = Vector3.zero;
 
-            Debug.Log($"[BoardScaler] OrthoSize={orthoSize:F2} " +
-                      $"CamPos=({centreX:F2},{centreY:F2}) " +
-                      $"Screen={Screen.width}x{Screen.height} " +
-                      $"Aspect={aspect:F2}");
+            Debug.Log($"[BoardScaler] size={orthoSize:F2} " +
+                      $"cam=({boardCentreX:F1},{boardCentreY+verticalShift:F1}) " +
+                      $"aspect={aspect:F2}");
         }
 
         // Call this if screen rotates (shouldn't in portrait, but just in case)

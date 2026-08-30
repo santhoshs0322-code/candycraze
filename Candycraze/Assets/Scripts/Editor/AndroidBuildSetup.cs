@@ -38,6 +38,13 @@ namespace CandyCraze.Editor
             PlayerSettings.allowedAutorotateToLandscapeLeft     = false;
             PlayerSettings.allowedAutorotateToLandscapeRight    = false;
 
+            // ── Aspect ratio — support 16:9 through tall 21.6:9 phones ─
+            // Without a high max aspect, tall phones (20:9, 21:9) get
+            // letterboxed with black bars. 2.4 lets the game fill any
+            // modern phone screen edge-to-edge. (16:9 and wider is the
+            // supported floor by default, so no min needs setting.)
+            PlayerSettings.Android.maxAspectRatio = 2.4f;      // up to ~21.6:9
+
             // ── Android API ──────────────────────────────────
             PlayerSettings.Android.minSdkVersion    = AndroidSdkVersions.AndroidApiLevel24; // Android 7
             PlayerSettings.Android.targetSdkVersion = AndroidSdkVersions.AndroidApiLevel33; // Android 13

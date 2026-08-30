@@ -28,6 +28,8 @@ namespace CandyCraze
         static readonly Color C_GREEN  = Hex("#2ECC71");
         static readonly Color C_GDARK  = Hex("#27AE60");
         static readonly Color C_RED    = Hex("#E74C3C");
+        static readonly Color C_CYAN   = Hex("#33E6FF");
+        static readonly Color C_PUR    = Hex("#8E44E8");
         static readonly Color C_WHITE  = Color.white;
         static readonly Color C_W70    = new Color(1,1,1,0.7f);
         static readonly Color C_W40    = new Color(1,1,1,0.4f);
@@ -61,6 +63,20 @@ namespace CandyCraze
             }
         }
 
+        void Start()
+        {
+            // Inject refs after all Awakes have run
+            if (SceneTarget == UISceneTarget.LevelMap)
+            {
+                var mc = GetComponent<LevelMapController>() ?? FindObjectOfType<LevelMapController>();
+                if (mc != null)
+                {
+                    mc.InjectRefs(BackButton, LevelContainer, TotalStarsText);
+                    Debug.Log("[RuntimeUIBuilder] Injected refs to LevelMapController.");
+                }
+            }
+        }
+
         // ════════════════════════════════════════════════════
         // MAIN MENU
         // ════════════════════════════════════════════════════
@@ -68,78 +84,138 @@ namespace CandyCraze
         {
             var root = cv.GetComponent<RectTransform>();
 
-            // BG
+            // ── BG — full-screen candy kingdom ───────────────
             var bg = Pnl("BG", root, V2(0,0), V2(1,1), V2(0,0), V2(0,0));
-            Clr(bg, C_BG);
-            Pnl("TopGrad", bg.RT(), V2(0,0.75f), V2(1,1), V2(0,0), V2(0,0));
-            Clr(bg.transform.Find("TopGrad").gameObject, new Color(0.25f,0.1f,0.5f,0.45f));
+            var bgImg = bg.GetComponent<Image>();
+            var menuBg = Resources.Load<Sprite>("UI/BG_Menu");
+            if (menuBg != null) { bgImg.sprite = menuBg; bgImg.color = Color.white; }
+            else Clr(bg, C_BG);
 
-            // HUD
-            float hudH = Mathf.Clamp(H*0.075f, 54f, 90f);
-            var hud = Pnl("HUD", root, V2(0,1), V2(1,1),
-                V2(0,-SafeTop-hudH), V2(0,-SafeTop));
-            Clr(hud, C_DARK);
-            Outline(hud, C_GOLD.WithAlpha(0.4f), 2f);
-            CoinsText = Txt("Coins", hud.RT(), V2(0,0),V2(0.5f,1),V2(0,0),V2(0,0),
-                "✦ 0", H*0.022f, C_GOLD, TextAnchor.MiddleCenter);
-            LivesText = Txt("Lives", hud.RT(), V2(0.5f,0),V2(1,1),V2(0,0),V2(0,0),
-                "♥♥♥♥♥", H*0.022f, C_RED, TextAnchor.MiddleCenter);
+            // ── HUD — coins OVAL chip (top-left) ─────────────
+            // (Lives pill removed — the game no longer uses a lives system,
+            //  so the top-right red circle was decorative/confusing.)
+            var coinsPill = OvalPanel("CoinsPill", root, V2(0.04f,0.90f), V2(0.42f,0.965f), C_GOLD);
+            CoinsText = Txt("Coins", coinsPill.RT(), V2(0,0),V2(1,1),V2(0,0),V2(0,0),
+                "✦ 0", H*0.025f, Color.white, TextAnchor.MiddleCenter, bold:true);
+            LivesText = null;
 
-            // Title
-            float tsz = Mathf.Clamp(W*0.13f, 52f, 96f);
-            Txt("TitleShadow", root, V2(0.5f,0.5f),V2(0.5f,0.5f),
-                V2(4,-H*0.22f-4), V2(W*0.9f,tsz+12),
-                "CandyCraze", tsz, new Color(0.7f,0.3f,0,0.6f), TextAnchor.MiddleCenter, bold:true);
-            Txt("Title", root, V2(0.5f,0.5f),V2(0.5f,0.5f),
-                V2(0,H*0.22f), V2(W*0.9f,tsz+8),
-                "CandyCraze", tsz, C_GOLD, TextAnchor.MiddleCenter, bold:true);
-            Txt("Tag", root, V2(0.5f,0.5f),V2(0.5f,0.5f),
-                V2(0,H*0.17f), V2(W*0.7f,36),
-                "Match • Blast • Win", W*0.038f, C_W70, TextAnchor.MiddleCenter);
+            // ── Multi-colour candy title ─────────────────────
+            BuildCandyTitle(root);
 
-            // Gem deco row
-            GemRow(root, V2(0, H*0.1f));
+            // Tagline ribbon banner — rounded candy pill
+            var banner = Pnl("TagBanner", root, V2(0.18f,0.675f), V2(0.82f,0.74f), Vector2.zero, Vector2.zero);
+            var bnImg = banner.GetComponent<Image>();
+            var bnSprite = Resources.Load<Sprite>("UI/LogoBanner")
+                        ?? Resources.Load<Sprite>("UI/BtnPurple")
+                        ?? Resources.Load<Sprite>("UI/Panel");
+            if (bnSprite != null)
+            {
+                bnImg.sprite = bnSprite;
+                bnImg.type = Image.Type.Sliced;
+                bnImg.color = Hex("#E84393");
+            }
+            else Clr(banner, Hex("#E84393"));
+            Outline(banner, C_WHITE.WithAlpha(0.7f), 2f);
+            Txt("Tag", banner.RT(), V2(0,0),V2(1,1),V2(0,0),V2(0,0),
+                "MATCH-3 ADVENTURE", W*0.045f, C_WHITE, TextAnchor.MiddleCenter, bold:true);
 
-            // PLAY button
-            float bw=Mathf.Clamp(W*0.72f,240,440), bh=Mathf.Clamp(H*0.085f,64,100);
-            PlayButton = Btn("PlayBtn", root, V2(0.5f,0.5f),V2(0.5f,0.5f),
-                V2(0,H*0.02f), V2(bw,bh),
-                "▶  PLAY", W*0.07f, C_GREEN, C_GDARK, C_WHITE);
-            Outline(PlayButton.gameObject, C_GOLD, 2.5f);
-            Shadow(PlayButton.gameObject);
+            // Gem deco row under title
+            GemRow(root, new Vector2(0, H*0.10f));
 
-            // SHOP + DAILY row
-            float sw2=Mathf.Clamp(W*0.43f,150,260), sh2=Mathf.Clamp(H*0.07f,54,82);
-            float sy = H*0.02f - bh*0.5f - sh2*0.5f - H*0.02f;
-            float sf = W*0.045f;
-            ShopButton = Btn("ShopBtn", root, V2(0.5f,0.5f),V2(0.5f,0.5f),
-                V2(-sw2*0.52f,sy), V2(sw2,sh2),
-                "SHOP", sf, C_PANEL, C_DARK, C_GOLD);
-            Outline(ShopButton.gameObject, C_GOLD.WithAlpha(0.6f), 2f);
-            DailyButton = Btn("DayBtn", root, V2(0.5f,0.5f),V2(0.5f,0.5f),
-                V2(sw2*0.52f,sy), V2(sw2,sh2),
-                "DAILY", sf, C_PANEL, C_DARK, C_GOLD);
-            Outline(DailyButton.gameObject, C_GOLD.WithAlpha(0.6f), 2f);
+            // ── PLAY — big pill button, centered ─────────────
+            PlayButton = Btn("PlayBtn", root,
+                V2(0.12f,0.40f), V2(0.88f,0.50f), Vector2.zero, Vector2.zero,
+                "▶  PLAY", W*0.085f, C_GREEN, C_GDARK, C_WHITE);
 
-            // SETTINGS
-            float setH=Mathf.Clamp(H*0.06f,48,74);
-            float setY=-H*0.5f+SafeBottom+setH*0.5f+H*0.02f;
-            SettingsButton = Btn("SetBtn", root, V2(0.5f,0.5f),V2(0.5f,0.5f),
-                V2(0,setY), V2(sw2,setH),
-                "SETTINGS", sf*0.9f, C_DARK, C_BG, C_W70);
-            Outline(SettingsButton.gameObject, C_W40, 1.5f);
+            // ── SHOP + DAILY — side by side pills ────────────
+            ShopButton = Btn("ShopBtn", root,
+                V2(0.12f,0.29f), V2(0.49f,0.375f), Vector2.zero, Vector2.zero,
+                "🏪 SHOP", W*0.05f, C_GOLD, C_GOLD*0.7f, C_WHITE);
+            DailyButton = Btn("DayBtn", root,
+                V2(0.51f,0.29f), V2(0.88f,0.375f), Vector2.zero, Vector2.zero,
+                "🎁 DAILY", W*0.05f, C_PUR, C_PUR*0.7f, C_WHITE);
 
-            // Wire MainMenuController
+            // ── SETTINGS — pill button ───────────────────────
+            SettingsButton = Btn("SetBtn", root,
+                V2(0.12f,0.18f), V2(0.88f,0.265f), Vector2.zero, Vector2.zero,
+                "⚙ SETTINGS", W*0.05f, C_DARK, C_BG, C_WHITE);
+
+            // ── SETTINGS PANEL ───────────────────────────────
+            var setPanel = Pnl("SettingsPanel", root, V2(0,0), V2(1,1), V2(0,0), V2(0,0));
+            Clr(setPanel, new Color(0.05f,0.03f,0.15f,0.97f));
+            Txt("SetTitle", setPanel.transform, V2(0.5f,0.5f),V2(0.5f,0.5f),
+                V2(0,H*0.32f), V2(W*0.8f,80), "SETTINGS", 52, C_GOLD,
+                TextAnchor.MiddleCenter, bold:true);
+            var soundBtn = Btn("SoundBtn", setPanel.transform, V2(0.5f,0.5f),V2(0.5f,0.5f),
+                V2(0,H*0.13f), V2(W*0.82f,140), "Sound: ON", 46, C_GREEN, C_GDARK, C_WHITE);
+            var musicBtn = Btn("MusicBtn", setPanel.transform, V2(0.5f,0.5f),V2(0.5f,0.5f),
+                V2(0,-H*0.01f), V2(W*0.82f,140), "Music: ON", 46, C_GREEN, C_GDARK, C_WHITE);
+            Txt("Ver", setPanel.transform, V2(0.5f,0.5f),V2(0.5f,0.5f),
+                V2(0,-H*0.14f), V2(W*0.7f,50), "Version 1.0.0", 26, C_W70);
+            var closeSet = Btn("CloseSet", setPanel.transform, V2(0.5f,0.5f),V2(0.5f,0.5f),
+                V2(0,-H*0.26f), V2(W*0.6f,120), "CLOSE", 42, C_RED, C_RED*0.7f, C_WHITE);
+            setPanel.SetActive(false);
+
+            // ── SHOP PANEL ───────────────────────────────────
+            var shopPanel = Pnl("ShopPanel", root, V2(0,0), V2(1,1), V2(0,0), V2(0,0));
+            Clr(shopPanel, new Color(0.05f,0.03f,0.15f,0.97f));
+            Txt("ShopTitle", shopPanel.transform, V2(0.5f,0.5f),V2(0.5f,0.5f),
+                V2(0,H*0.35f), V2(W*0.8f,80), "SHOP", 52, C_GOLD,
+                TextAnchor.MiddleCenter, bold:true);
+            Txt("ShopMsg", shopPanel.transform, V2(0.5f,0.5f),V2(0.5f,0.5f),
+                V2(0,H*0.05f), V2(W*0.8f,120), "Coin packs & boosters\ncoming soon!",
+                34, C_CYAN);
+            // Free coins button for testing
+            var freeCoins = Btn("FreeCoins", shopPanel.transform, V2(0.5f,0.5f),V2(0.5f,0.5f),
+                V2(0,-H*0.06f), V2(W*0.82f,130), "Get 500 Coins (Free)", 38, C_GOLD, C_GOLD*0.7f, C_WHITE);
+            var closeShop = Btn("CloseShop", shopPanel.transform, V2(0.5f,0.5f),V2(0.5f,0.5f),
+                V2(0,-H*0.26f), V2(W*0.6f,120), "CLOSE", 42, C_RED, C_RED*0.7f, C_WHITE);
+            shopPanel.SetActive(false);
+
+            // Store panel refs for the controller
+            SettingsPanel = setPanel;
+            ShopPanel = shopPanel;
+
+            // ── Wire MainMenuController ──────────────────────
             var ctrl = FindObjectOfType<MainMenuController>();
             if (ctrl != null)
             {
                 PlayButton?.onClick.AddListener(ctrl.OnPlayPressed);
-                ShopButton?.onClick.AddListener(ctrl.OnShopPressed);
+                SettingsButton?.onClick.AddListener(() => setPanel.SetActive(true));
+                ShopButton?.onClick.AddListener(() => shopPanel.SetActive(true));
                 DailyButton?.onClick.AddListener(ctrl.OnDailyRewardPressed);
-                SettingsButton?.onClick.AddListener(ctrl.OnSettingsPressed);
                 ctrl.UpdateHUDRefs(CoinsText, LivesText);
             }
+
+            // Panel button wiring
+            closeSet?.onClick.AddListener(() => setPanel.SetActive(false));
+            closeShop?.onClick.AddListener(() => shopPanel.SetActive(false));
+
+            soundBtn?.onClick.AddListener(() => {
+                AudioManager.Instance?.ToggleSound();
+                var t = soundBtn.transform.Find("Label")?.GetComponent<Text>();
+                if (t != null) t.text = (AudioManager.Instance?.SoundOn ?? true) ? "Sound: ON" : "Sound: OFF";
+            });
+            musicBtn?.onClick.AddListener(() => {
+                AudioManager.Instance?.ToggleMusic();
+                var t = musicBtn.transform.Find("Label")?.GetComponent<Text>();
+                if (t != null) t.text = (AudioManager.Instance?.MusicOn ?? true) ? "Music: ON" : "Music: OFF";
+            });
+            freeCoins?.onClick.AddListener(() => {
+                if (SaveManager.Instance != null)
+                {
+                    SaveManager.Instance.Data.Coins += 500;
+                    SaveManager.Instance.Data.BoosterHammer += 3;
+                    SaveManager.Instance.Data.BoosterShuffle += 3;
+                    SaveManager.Instance.Data.BoosterColorBlast += 3;
+                    SaveManager.Instance.Save();
+                    if (CoinsText != null) CoinsText.text = $"✦ {SaveManager.Instance.Data.Coins}";
+                }
+            });
         }
+
+        [HideInInspector] public GameObject SettingsPanel;
+        [HideInInspector] public GameObject ShopPanel;
 
         // ════════════════════════════════════════════════════
         // LEVEL MAP
@@ -173,25 +249,35 @@ namespace CandyCraze
             // Scroll
             float topPad = SafeTop+hdrH+H*0.01f;
             float botPad = SafeBottom+H*0.01f;
-            var scrollGO = Pnl("ScrollView", root, V2(0,0),V2(1,1),
-                V2(0,botPad), V2(0,-topPad));
-            Clr(scrollGO, C_TRANS);
+            // Scroll — DON'T use Pnl (which adds Image) — create manually
+            var scrollGO = new GameObject("ScrollView");
+            scrollGO.transform.SetParent(root, false);
+            var scrollRt = scrollGO.AddComponent<RectTransform>();
+            scrollRt.anchorMin = V2(0,0); scrollRt.anchorMax = V2(1,1);
+            scrollRt.offsetMin = V2(0,botPad); scrollRt.offsetMax = V2(0,-topPad);
+
+            // Add Image for mask (only one!)
+            var scrollImg = scrollGO.AddComponent<Image>();
+            scrollImg.color = C_TRANS;
+            scrollGO.AddComponent<Mask>().showMaskGraphic = false;
+
             var sr = scrollGO.AddComponent<ScrollRect>();
             sr.horizontal=false; sr.vertical=true;
             sr.scrollSensitivity=30f; sr.inertia=true;
             sr.decelerationRate=0.135f;
             sr.movementType=ScrollRect.MovementType.Elastic;
             sr.elasticity=0.1f;
-            var mskImg=scrollGO.AddComponent<Image>(); mskImg.color=C_TRANS;
-            scrollGO.AddComponent<Mask>().showMaskGraphic=false;
 
-            // Viewport
-            var vp = Pnl("Viewport", scrollGO.RT(), V2(0,0),V2(1,1),V2(0,0),V2(0,0));
-            Clr(vp, C_TRANS);
-            sr.viewport = vp.RT();
+            // Viewport — just a RectTransform, no Image needed
+            var vp = new GameObject("Viewport");
+            vp.transform.SetParent(scrollGO.transform, false);
+            var vpRt = vp.AddComponent<RectTransform>();
+            vpRt.anchorMin = V2(0,0); vpRt.anchorMax = V2(1,1);
+            vpRt.offsetMin = Vector2.zero; vpRt.offsetMax = Vector2.zero;
+            sr.viewport = vpRt;
 
             // Content
-            var ct = new GameObject("Content"); ct.transform.SetParent(vp.transform,false);
+            var ct = new GameObject("Content"); ct.transform.SetParent(vp.transform, false);
             var ctRt = ct.AddComponent<RectTransform>();
             ctRt.anchorMin=V2(0,1); ctRt.anchorMax=V2(1,1);
             ctRt.pivot=V2(0.5f,1); ctRt.anchoredPosition=Vector2.zero;
@@ -204,10 +290,6 @@ namespace CandyCraze
             ct.AddComponent<ContentSizeFitter>().verticalFit=ContentSizeFitter.FitMode.PreferredSize;
             sr.content=ctRt;
             LevelContainer=ct.transform; LevelScroll=sr;
-
-            // Wire LevelMapController
-            var mc = FindObjectOfType<LevelMapController>();
-            if (mc != null) mc.InjectRefs(BackButton, LevelContainer, TotalStarsText);
         }
 
         // ════════════════════════════════════════════════════
@@ -223,7 +305,7 @@ namespace CandyCraze
             rt.sizeDelta = new Vector2(cw, ch);
 
             var img = card.AddComponent<Image>();
-            img.color = unlocked ? Hex("#2D1B5E") : Hex("#3A3355");
+            img.color = unlocked ? new Color(0.25f, 0.15f, 0.50f) : new Color(0.15f, 0.10f, 0.25f);
 
             if (unlocked)
             {
@@ -297,19 +379,29 @@ namespace CandyCraze
         // ════════════════════════════════════════════════════
         Canvas GetOrMakeCanvas()
         {
-            Canvas c=GetComponent<Canvas>()??gameObject.AddComponent<Canvas>();
-            c.renderMode=RenderMode.ScreenSpaceOverlay;
-            var cs=GetComponent<CanvasScaler>()??gameObject.AddComponent<CanvasScaler>();
-            cs.uiScaleMode=CanvasScaler.ScaleMode.ScaleWithScreenSize;
-            cs.referenceResolution=new Vector2(1080,2400);
-            cs.screenMatchMode=CanvasScaler.ScreenMatchMode.MatchWidthOrHeight;
-            cs.matchWidthOrHeight=0.5f;
-            if(!GetComponent<GraphicRaycaster>()) gameObject.AddComponent<GraphicRaycaster>();
-            if(!GetComponent<EventSystems.EventSystem>())
+            Canvas c = GetComponent<Canvas>();
+            if (c == null) c = gameObject.AddComponent<Canvas>();
+            c.renderMode = RenderMode.ScreenSpaceOverlay;
+
+            CanvasScaler cs = GetComponent<CanvasScaler>();
+            if (cs == null) cs = gameObject.AddComponent<CanvasScaler>();
+            cs.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
+            // Portrait baseline shared by every scene. Match WIDTH (0) so the
+            // layout is identical from 16:9 up to tall 20:9 phones — extra
+            // height simply becomes vertical breathing room instead of
+            // squashing/stretching the UI.
+            cs.referenceResolution = new Vector2(1080, 1920);
+            cs.screenMatchMode = CanvasScaler.ScreenMatchMode.MatchWidthOrHeight;
+            cs.matchWidthOrHeight = 0f;
+
+            if (GetComponent<GraphicRaycaster>() == null)
+                gameObject.AddComponent<GraphicRaycaster>();
+
+            if (FindObjectOfType<UnityEngine.EventSystems.EventSystem>() == null)
             {
-                var esGO=new GameObject("EventSystem");
-                esGO.AddComponent<EventSystems.EventSystem>();
-                esGO.AddComponent<EventSystems.StandaloneInputModule>();
+                var esGO = new GameObject("EventSystem");
+                esGO.AddComponent<UnityEngine.EventSystems.EventSystem>();
+                esGO.AddComponent<UnityEngine.EventSystems.StandaloneInputModule>();
             }
             return c;
         }
@@ -341,16 +433,39 @@ namespace CandyCraze
         static Text Txt(string n,Transform p,Vector2 amin,Vector2 amax,Vector2 apos,Vector2 sd,
             string txt,float fsz,Color col,TextAnchor align=TextAnchor.MiddleCenter,bool bold=false)
             =>Txt(n,p.GetComponent<RectTransform>(),amin,amax,apos,sd,txt,fsz,col,align,bold);
+        // Pick the closest rounded button sprite for a colour
+        static Sprite PickBtnSprite(Color c)
+        {
+            // Choose by dominant hue
+            if (c.g > c.r && c.g > c.b) return Resources.Load<Sprite>("UI/BtnGreen");
+            if (c.b > c.r && c.b > c.g) return Resources.Load<Sprite>("UI/BtnBlue");
+            if (c.r > 0.7f && c.g > 0.5f) return Resources.Load<Sprite>("UI/BtnGold");
+            if (c.r > c.g && c.r > c.b) return Resources.Load<Sprite>("UI/BtnRed");
+            if (c.r > 0.3f && c.b > 0.5f) return Resources.Load<Sprite>("UI/BtnPurple");
+            return Resources.Load<Sprite>("UI/BtnDark");
+        }
+
         static Button Btn(string n,RectTransform p,Vector2 amin,Vector2 amax,Vector2 apos,Vector2 sd,
             string lbl,float fsz,Color nc,Color pc,Color tc)
         {
             var g=new GameObject(n); g.transform.SetParent(p,false);
             var r=g.AddComponent<RectTransform>();
             r.anchorMin=amin; r.anchorMax=amax; r.anchoredPosition=apos; r.sizeDelta=sd;
-            var img=g.AddComponent<Image>(); img.color=nc;
+            var img=g.AddComponent<Image>();
+
+            // Use rounded sprite if available (9-sliced)
+            Sprite btnSprite = PickBtnSprite(nc);
+            if (btnSprite != null)
+            {
+                img.sprite = btnSprite;
+                img.type = Image.Type.Sliced;
+                img.color = Color.white;
+            }
+            else img.color = nc;
+
             var btn=g.AddComponent<Button>();
-            var cb=btn.colors; cb.normalColor=nc; cb.highlightedColor=nc*1.15f;
-            cb.pressedColor=pc; cb.disabledColor=nc.WithAlpha(0.4f);
+            var cb=btn.colors; cb.normalColor=Color.white; cb.highlightedColor=new Color(1.1f,1.1f,1.1f);
+            cb.pressedColor=new Color(0.8f,0.8f,0.8f); cb.disabledColor=new Color(0.6f,0.6f,0.6f);
             btn.colors=cb; btn.targetGraphic=img;
             var tg=new GameObject("Label"); tg.transform.SetParent(g.transform,false);
             var tr=tg.AddComponent<RectTransform>();
@@ -364,6 +479,92 @@ namespace CandyCraze
         static Button Btn(string n,Transform p,Vector2 amin,Vector2 amax,Vector2 apos,Vector2 sd,
             string lbl,float fsz,Color nc,Color pc,Color tc)
             =>Btn(n,p.GetComponent<RectTransform>(),amin,amax,apos,sd,lbl,fsz,nc,pc,tc);
+
+        // ── Multi-colour candy title (each letter a color) ───
+        void BuildCandyTitle(RectTransform root)
+        {
+            string word = "CandyCraze";
+            Color[] candyColors = {
+                Hex("#FF4D6D"), Hex("#FF9F1C"), Hex("#FFD60A"), Hex("#06D6A0"),
+                Hex("#118AB2"), Hex("#9B5DE5"), Hex("#FF4D6D"), Hex("#FF9F1C"),
+                Hex("#06D6A0"), Hex("#118AB2"),
+            };
+
+            int n = word.Length;
+            float letterW = 1f / n * 0.9f;      // relative width per letter
+            float startX = 0.5f - (letterW * n) / 2f;
+            float titleY = 0.80f;
+            float fsz = Mathf.Clamp(W * 0.13f, 55f, 110f);
+
+            for (int i = 0; i < n; i++)
+            {
+                float cx = startX + letterW * (i + 0.5f);
+                Color col = candyColors[i % candyColors.Length];
+
+                // Shadow
+                var sh = new GameObject($"L{i}_sh");
+                sh.transform.SetParent(root, false);
+                var shRt = sh.AddComponent<RectTransform>();
+                shRt.anchorMin = new Vector2(cx - letterW*0.7f, titleY - 0.08f);
+                shRt.anchorMax = new Vector2(cx + letterW*0.7f, titleY + 0.08f);
+                shRt.offsetMin = new Vector2(4,-4); shRt.offsetMax = new Vector2(4,-4);
+                var shT = sh.AddComponent<Text>();
+                shT.text = word[i].ToString(); shT.fontSize = Mathf.RoundToInt(fsz);
+                shT.color = new Color(0,0,0,0.5f); shT.alignment = TextAnchor.MiddleCenter;
+                shT.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+                shT.fontStyle = FontStyle.Bold; shT.raycastTarget = false;
+
+                // Coloured letter
+                var g = new GameObject($"L{i}");
+                g.transform.SetParent(root, false);
+                var rt = g.AddComponent<RectTransform>();
+                rt.anchorMin = new Vector2(cx - letterW*0.7f, titleY - 0.08f);
+                rt.anchorMax = new Vector2(cx + letterW*0.7f, titleY + 0.08f);
+                rt.offsetMin = Vector2.zero; rt.offsetMax = Vector2.zero;
+                var t = g.AddComponent<Text>();
+                t.text = word[i].ToString(); t.fontSize = Mathf.RoundToInt(fsz);
+                t.color = col; t.alignment = TextAnchor.MiddleCenter;
+                t.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+                t.fontStyle = FontStyle.Bold; t.raycastTarget = false;
+
+                // White outline for candy pop
+                var ol = g.AddComponent<Outline>();
+                ol.effectColor = Color.white;
+                ol.effectDistance = new Vector2(2, -2);
+            }
+        }
+
+        // Oval-shaped chip (stretched circle) for HUD corners
+        static GameObject OvalPanel(string n, RectTransform p, Vector2 amin, Vector2 amax, Color col)
+        {
+            var g = new GameObject(n); g.transform.SetParent(p, false);
+            var r = g.AddComponent<RectTransform>();
+            r.anchorMin = amin; r.anchorMax = amax;
+            r.offsetMin = Vector2.zero; r.offsetMax = Vector2.zero;
+            var img = g.AddComponent<Image>();
+            var circle = Resources.Load<Sprite>("UI/Circle");
+            if (circle != null) { img.sprite = circle; img.color = col; }
+            else img.color = col;
+            // Glossy white rim for an attractive candy look
+            var ol = g.AddComponent<Outline>();
+            ol.effectColor = C_WHITE.WithAlpha(0.6f);
+            ol.effectDistance = new Vector2(2f, -2f);
+            return g;
+        }
+
+        // Rounded pill panel (no button) for HUD chips
+        static GameObject BtnPanel(string n, RectTransform p, Vector2 amin, Vector2 amax, Color col)
+        {
+            var g = new GameObject(n); g.transform.SetParent(p, false);
+            var r = g.AddComponent<RectTransform>();
+            r.anchorMin = amin; r.anchorMax = amax;
+            r.offsetMin = Vector2.zero; r.offsetMax = Vector2.zero;
+            var img = g.AddComponent<Image>();
+            var sp = PickBtnSprite(col);
+            if (sp != null) { img.sprite = sp; img.type = Image.Type.Sliced; img.color = col; }
+            else img.color = col;
+            return g;
+        }
         static void Outline(GameObject g,Color c,float w)
         { var o=g.AddComponent<Outline>(); o.effectColor=c; o.effectDistance=new Vector2(w,-w); }
         static void Shadow(GameObject g)

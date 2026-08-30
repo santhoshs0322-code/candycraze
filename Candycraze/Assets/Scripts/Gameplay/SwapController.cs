@@ -1,14 +1,7 @@
 // ============================================================
 // SwapController.cs
-// Handles all player touch/swipe input on the board.
-// Converts screen touches into swap requests sent to
-// BoardManager.
-//
-// Features:
-//   • Tap to select + tap adjacent to swap
-//   • Swipe directly to swap
-//   • Prevents input while board is busy
-//   • Visual selection feedback via GemView.SetHighlight()
+// Unified touch + mouse input. Works on mobile and editor.
+// Tap-to-select or swipe-to-swap adjacent gems.
 // ============================================================
 
 using UnityEngine;
@@ -17,28 +10,27 @@ namespace CandyCraze
 {
     public class SwapController : MonoBehaviour
     {
-        [Header("References")]
         [SerializeField] private BoardManager _boardManager;
         [SerializeField] private Camera       _gameCamera;
+        [SerializeField] private float        _minSwipePixels = 15f;
 
-        [Header("Swipe Settings")]
-        [Tooltip("Minimum swipe distance in screen pixels to register a swipe.")]
-        [SerializeField] private float _minSwipeDistance = 20f;
+        private bool    _blocked;
+        private bool    _dragging;
+        private Vector2 _startScreen;
+        private GemView _dragGem;
+        private GemView _selected;
 
-        // ── State ────────────────────────────────────────────
-        private bool    _inputBlocked;
-        private bool    _isDragging;
-        private Vector2 _touchStartScreen;
-        private GemView _selectedGem;      // First tap selection
-        private GemView _dragGem;          // Gem being dragged from
-
-        // ────────────────────────────────────────────────────
         private void Awake()
         {
-            if (_boardManager == null) _boardManager = FindObjectOfType<BoardManager>();
+            if (_boardManager == null) _boardManager = FindObjectOfType<BoardManager>(true);
+            if (_gameCamera   == null) _gameCamera   = Camera.main;
+        }
+
+        private void Start()
+        {
+            if (_boardManager == null) _boardManager = FindObjectOfType<BoardManager>(true);
             if (_gameCamera   == null) _gameCamera   = Camera.main;
 
-            // Listen for busy events
             if (GameManager.Instance != null)
                 GameManager.Instance.OnBoardBusy.AddListener(SetBlocked);
         }
@@ -49,163 +41,134 @@ namespace CandyCraze
                 GameManager.Instance.OnBoardBusy.RemoveListener(SetBlocked);
         }
 
-        // ── Unity Input ──────────────────────────────────────
-
         private void Update()
         {
-            if (_inputBlocked) return;
-            if (GameManager.Instance != null &&
-                GameManager.Instance.State != GameState.Playing) return;
+            if (_blocked) return;
+            if (GameManager.Instance != null && GameManager.Instance.State != GameState.Playing) return;
+            if (_boardManager == null || _gameCamera == null) return;
 
-#if UNITY_EDITOR || UNITY_STANDALONE
-            HandleMouseInput();
-#else
-            HandleTouchInput();
-#endif
-        }
-
-        // ── Mouse (editor) ───────────────────────────────────
-
-        private void HandleMouseInput()
-        {
-            if (Input.GetMouseButtonDown(0))
+            // ── TOUCH (mobile) ───────────────────────────────
+            if (Input.touchCount > 0)
             {
-                _touchStartScreen = Input.mousePosition;
-                _isDragging = false;
-                _dragGem = GemAtScreenPos(Input.mousePosition);
-            }
-
-            if (Input.GetMouseButton(0) && _dragGem != null)
-            {
-                Vector2 delta = (Vector2)Input.mousePosition - _touchStartScreen;
-                if (!_isDragging && delta.magnitude >= _minSwipeDistance)
+                Touch t = Input.GetTouch(0);
+                switch (t.phase)
                 {
-                    _isDragging = true;
-                    TrySwipeFrom(_dragGem, delta);
-                    ClearSelection();
+                    case TouchPhase.Began:
+                        BeginInput(t.position);
+                        break;
+                    case TouchPhase.Moved:
+                    case TouchPhase.Stationary:
+                        MoveInput(t.position);
+                        break;
+                    case TouchPhase.Ended:
+                    case TouchPhase.Canceled:
+                        EndInput(t.position);
+                        break;
                 }
-            }
-
-            if (Input.GetMouseButtonUp(0))
-            {
-                if (!_isDragging)
-                {
-                    // Pure tap — handle selection
-                    GemView tapped = GemAtScreenPos(Input.mousePosition);
-                    HandleTap(tapped);
-                }
-                _isDragging = false;
-                _dragGem = null;
-            }
-        }
-
-        // ── Touch (device) ───────────────────────────────────
-
-        private void HandleTouchInput()
-        {
-            if (Input.touchCount == 0) return;
-            Touch touch = Input.GetTouch(0);
-
-            switch (touch.phase)
-            {
-                case TouchPhase.Began:
-                    _touchStartScreen = touch.position;
-                    _isDragging = false;
-                    _dragGem = GemAtScreenPos(touch.position);
-                    break;
-
-                case TouchPhase.Moved:
-                    if (_dragGem != null)
-                    {
-                        Vector2 delta = touch.position - _touchStartScreen;
-                        if (!_isDragging && delta.magnitude >= _minSwipeDistance)
-                        {
-                            _isDragging = true;
-                            TrySwipeFrom(_dragGem, delta);
-                            ClearSelection();
-                        }
-                    }
-                    break;
-
-                case TouchPhase.Ended:
-                case TouchPhase.Canceled:
-                    if (!_isDragging)
-                    {
-                        GemView tapped = GemAtScreenPos(touch.position);
-                        HandleTap(tapped);
-                    }
-                    _isDragging = false;
-                    _dragGem = null;
-                    break;
-            }
-        }
-
-        // ── Logic ────────────────────────────────────────────
-
-        private void HandleTap(GemView tapped)
-        {
-            if (tapped == null)
-            {
-                ClearSelection();
                 return;
             }
 
-            if (_selectedGem == null)
+            // ── MOUSE (editor / desktop) ─────────────────────
+            if (Input.GetMouseButtonDown(0)) BeginInput(Input.mousePosition);
+            else if (Input.GetMouseButton(0)) MoveInput(Input.mousePosition);
+            else if (Input.GetMouseButtonUp(0)) EndInput(Input.mousePosition);
+        }
+
+        // ── Input phases ─────────────────────────────────────
+
+        private void BeginInput(Vector2 screenPos)
+        {
+            _startScreen = screenPos;
+            _dragging = false;
+            _dragGem = GemAt(screenPos);
+        }
+
+        private void MoveInput(Vector2 screenPos)
+        {
+            if (_dragGem == null || _dragging) return;
+            Vector2 delta = screenPos - _startScreen;
+            if (delta.magnitude >= _minSwipePixels)
             {
-                // First tap — select this gem
-                _selectedGem = tapped;
-                _selectedGem.SetHighlight(true);
-            }
-            else if (_selectedGem == tapped)
-            {
-                // Tapped same gem — deselect
+                _dragging = true;
+                SwipeFrom(_dragGem, delta);
                 ClearSelection();
             }
-            else if (AreAdjacent(_selectedGem, tapped))
+        }
+
+        private void EndInput(Vector2 screenPos)
+        {
+            if (!_dragging)
             {
-                // Tapped adjacent gem — swap
-                _boardManager.TrySwap(
-                    _selectedGem.Row, _selectedGem.Col,
-                    tapped.Row,       tapped.Col);
+                GemView tapped = GemAt(screenPos);
+                HandleTap(tapped);
+            }
+            _dragging = false;
+            _dragGem = null;
+        }
+
+        // ── Tap select ───────────────────────────────────────
+
+        private void HandleTap(GemView tapped)
+        {
+            if (tapped == null) { ClearSelection(); return; }
+
+            if (_selected == null)
+            {
+                _selected = tapped;
+                _selected.SetHighlight(true);
+            }
+            else if (_selected == tapped)
+            {
+                ClearSelection();
+            }
+            else if (Adjacent(_selected, tapped))
+            {
+                _boardManager.TrySwap(_selected.Row, _selected.Col, tapped.Row, tapped.Col);
                 ClearSelection();
             }
             else
             {
-                // Not adjacent — switch selection
                 ClearSelection();
-                _selectedGem = tapped;
-                _selectedGem.SetHighlight(true);
+                _selected = tapped;
+                _selected.SetHighlight(true);
             }
         }
 
-        private void TrySwipeFrom(GemView gem, Vector2 delta)
+        private void SwipeFrom(GemView gem, Vector2 delta)
         {
-            // Determine swipe direction
             int dr = 0, dc = 0;
             if (Mathf.Abs(delta.x) > Mathf.Abs(delta.y))
                 dc = delta.x > 0 ? 1 : -1;
             else
-                dr = delta.y > 0 ? 1 : -1;   // Screen-up = higher row
+                dr = delta.y > 0 ? 1 : -1;
 
-            int targetRow = gem.Row + dr;
-            int targetCol = gem.Col + dc;
-
-            _boardManager.TrySwap(gem.Row, gem.Col, targetRow, targetCol);
+            _boardManager.TrySwap(gem.Row, gem.Col, gem.Row + dr, gem.Col + dc);
         }
 
         // ── Helpers ──────────────────────────────────────────
 
-        private GemView GemAtScreenPos(Vector2 screenPos)
+        private GemView GemAt(Vector2 screenPos)
         {
+            // Convert screen to world
             Vector3 world = _gameCamera.ScreenToWorldPoint(
-                new Vector3(screenPos.x, screenPos.y, _gameCamera.nearClipPlane));
+                new Vector3(screenPos.x, screenPos.y, -_gameCamera.transform.position.z));
+            world.z = 0f;
 
-            // Small overlap radius to be forgiving on mobile
-            Collider2D hit = Physics2D.OverlapCircle(world, Constants.CELL_SIZE * 0.45f);
-            return hit != null ? hit.GetComponent<GemView>() : null;
+            // Try physics overlap first
+            Collider2D hit = Physics2D.OverlapPoint(world);
+            if (hit != null)
+            {
+                var gv = hit.GetComponent<GemView>();
+                if (gv != null) return gv;
+            }
+
+            // Fallback: find nearest gem by grid position
+            int col = Mathf.RoundToInt((world.x - _boardManager.CellToWorld(0,0).x) / Constants.CELL_SIZE);
+            int row = Mathf.RoundToInt((world.y - _boardManager.CellToWorld(0,0).y) / Constants.CELL_SIZE);
+            return _boardManager.GetGem(row, col);
         }
 
-        private bool AreAdjacent(GemView a, GemView b)
+        private bool Adjacent(GemView a, GemView b)
         {
             int dr = Mathf.Abs(a.Row - b.Row);
             int dc = Mathf.Abs(a.Col - b.Col);
@@ -214,17 +177,17 @@ namespace CandyCraze
 
         private void ClearSelection()
         {
-            if (_selectedGem != null)
+            if (_selected != null)
             {
-                _selectedGem.SetHighlight(false);
-                _selectedGem = null;
+                _selected.SetHighlight(false);
+                _selected = null;
             }
         }
 
-        private void SetBlocked(bool blocked)
+        private void SetBlocked(bool b)
         {
-            _inputBlocked = blocked;
-            if (blocked) ClearSelection();
+            _blocked = b;
+            if (b) ClearSelection();
         }
     }
 }
