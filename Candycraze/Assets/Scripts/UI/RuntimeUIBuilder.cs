@@ -21,7 +21,7 @@ namespace CandyCraze
         public UISceneTarget SceneTarget = UISceneTarget.MainMenu;
 
         // Palette
-        static readonly Color C_BG     = Hex("#1A0A2E");
+        static readonly Color C_BG     = Hex("#1A2245");   // deep candy navy
         static readonly Color C_PANEL  = Hex("#2D1B5E");
         static readonly Color C_DARK   = Hex("#1F0F45");
         static readonly Color C_GOLD   = Hex("#FFD700");

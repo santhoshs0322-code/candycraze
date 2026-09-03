@@ -1,0 +1,30 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 240b4ccc60613fd4ba683ad0eda97eaf, type: 3}
+  m_Name: GameConfig
+  m_EditorClassIdentifier: 
+  GemDefinitions: []
+  Levels: []
+  MaxLives: 5
+  LifeRegenMinutes: 30
+  CoinsPerStar: 10
+  CoinsPerLevelWin: 25
+  SwapDuration: 0.2
+  InvalidSwapReturn: 0.15
+  MatchDestroyDelay: 0.25
+  GravityDelay: 0.05
+  CascadeCheckDelay: 0.15
+  GemFallSpeed: 10
+  SpawnDelay: 0.05
+  ScorePerGem: 60
+  ComboScoreMultiplier: 50
+  SpecialGemScore: 200

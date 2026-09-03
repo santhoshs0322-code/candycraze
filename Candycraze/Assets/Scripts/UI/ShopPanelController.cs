@@ -89,18 +89,6 @@ namespace CandyCraze
         public void OnBuyExtraMoves() { AudioManager.Instance?.PlaySFX(AudioManager.SFX.Button); ShopManager.Instance?.BuyExtraMoves(); }
         public void OnBuyColorBlast() { AudioManager.Instance?.PlaySFX(AudioManager.SFX.Button); ShopManager.Instance?.BuyColorBlast(); }
 
-        public void OnBuyRemoveAds()
-        {
-            AudioManager.Instance?.PlaySFX(AudioManager.SFX.Button);
-            ShopManager.Instance?.BuyRemoveAds();
-        }
-
-        public void OnWatchAdForCoins()
-        {
-            AudioManager.Instance?.PlaySFX(AudioManager.SFX.Button);
-            ShopManager.Instance?.WatchAdForCoins();
-        }
-
         // ── Private ──────────────────────────────────────────
 
         private void OnPurchase()

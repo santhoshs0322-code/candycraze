@@ -1,0 +1,47 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 61dc50ea82ce4754faeefed0845c62a1, type: 3}
+  m_Name: LevelData_0208
+  m_EditorClassIdentifier: 
+  LevelNumber: 208
+  LevelName: Level 208
+  Rows: 8
+  Cols: 8
+  TileLayout: []
+  MoveLimit: 16
+  StarThreshold1: 34584
+  StarThreshold2: 62251
+  StarThreshold3: 110669
+  Objectives:
+  - Type: 0
+    TargetScore: 34584
+    GemTypeID: 0
+    TargetAmount: 0
+    Description: Score 34,584
+  - Type: 1
+    TargetScore: 0
+    GemTypeID: 4
+    TargetAmount: 37
+    Description: Collect 37 gems
+  - Type: 1
+    TargetScore: 0
+    GemTypeID: 1
+    TargetAmount: 29
+    Description: Collect 29 crystals
+  GemSpawnWeights:
+  - 1
+  - 1
+  - 1
+  - 1
+  - 1
+  - 1
+  BackgroundSprite: {fileID: 0}

@@ -1,0 +1,47 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 61dc50ea82ce4754faeefed0845c62a1, type: 3}
+  m_Name: LevelData_0239
+  m_EditorClassIdentifier: 
+  LevelNumber: 239
+  LevelName: Level 239
+  Rows: 8
+  Cols: 8
+  TileLayout: []
+  MoveLimit: 16
+  StarThreshold1: 39442
+  StarThreshold2: 70996
+  StarThreshold3: 126214
+  Objectives:
+  - Type: 0
+    TargetScore: 39442
+    GemTypeID: 0
+    TargetAmount: 0
+    Description: Score 39,442
+  - Type: 1
+    TargetScore: 0
+    GemTypeID: 5
+    TargetAmount: 39
+    Description: Collect 39 gems
+  - Type: 1
+    TargetScore: 0
+    GemTypeID: 2
+    TargetAmount: 31
+    Description: Collect 31 crystals
+  GemSpawnWeights:
+  - 1
+  - 1
+  - 1
+  - 1
+  - 1
+  - 1
+  BackgroundSprite: {fileID: 0}

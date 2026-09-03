@@ -15,7 +15,6 @@ namespace CandyCraze
         // These IDs must exactly match the product IDs set up in Google Play Console.
         // They are intentionally left as configurable strings — do NOT hardcode
         // real payment credentials here or commit them to a public repo.
-        public const string RemoveAds     = "com.yourcompany.candycraze.removeads";
         public const string Coins_Small   = "com.yourcompany.candycraze.coins_small";
         public const string Coins_Medium  = "com.yourcompany.candycraze.coins_medium";
         public const string Coins_Large   = "com.yourcompany.candycraze.coins_large";
@@ -68,18 +67,5 @@ namespace CandyCraze
 #endif
         }
 
-        /// <summary>Returns true if Remove Ads has been purchased.</summary>
-        public bool HasRemovedAds()
-        {
-            // TODO Phase 8: query real purchase receipt.
-            return PlayerPrefs.GetInt("RemoveAds", 0) == 1;
-        }
-
-        /// <summary>Call after successfully purchasing Remove Ads to persist locally.</summary>
-        public void SetAdsRemoved()
-        {
-            PlayerPrefs.SetInt("RemoveAds", 1);
-            PlayerPrefs.Save();
-        }
     }
 }

@@ -1,0 +1,47 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 61dc50ea82ce4754faeefed0845c62a1, type: 3}
+  m_Name: LevelData_0945
+  m_EditorClassIdentifier: 
+  LevelNumber: 945
+  LevelName: Level 945
+  Rows: 8
+  Cols: 8
+  TileLayout: []
+  MoveLimit: 10
+  StarThreshold1: 148398
+  StarThreshold2: 267116
+  StarThreshold3: 474874
+  Objectives:
+  - Type: 0
+    TargetScore: 148398
+    GemTypeID: 0
+    TargetAmount: 0
+    Description: Score 1,48,398
+  - Type: 1
+    TargetScore: 0
+    GemTypeID: 3
+    TargetAmount: 60
+    Description: Collect 60 gems
+  - Type: 1
+    TargetScore: 0
+    GemTypeID: 0
+    TargetAmount: 50
+    Description: Collect 50 crystals
+  GemSpawnWeights:
+  - 1
+  - 1
+  - 1
+  - 1
+  - 1
+  - 1
+  BackgroundSprite: {fileID: 0}

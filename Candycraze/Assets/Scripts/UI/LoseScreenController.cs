@@ -20,16 +20,14 @@ namespace CandyCraze
         [Header("Buttons")]
         [SerializeField] private Button _retryButton;
         [SerializeField] private Button _quitButton;
-        [SerializeField] private Button _watchAdButton;  // Extra moves via rewarded ad
 
         // ────────────────────────────────────────────────────
         private void Awake()
         {
             if (_panel != null) _panel.SetActive(false);
 
-            if (_retryButton   != null) _retryButton.onClick.AddListener(OnRetry);
-            if (_quitButton    != null) _quitButton.onClick.AddListener(OnQuit);
-            if (_watchAdButton != null) _watchAdButton.onClick.AddListener(OnWatchAd);
+            if (_retryButton != null) _retryButton.onClick.AddListener(OnRetry);
+            if (_quitButton  != null) _quitButton.onClick.AddListener(OnQuit);
         }
 
         // ── Public API ───────────────────────────────────────
@@ -84,11 +82,6 @@ namespace CandyCraze
                     : "No lives left!";
             }
 
-            // Show watch-ad button only if ad is available
-            if (_watchAdButton != null)
-                _watchAdButton.gameObject.SetActive(
-                    AdManager.Instance != null && AdManager.Instance.IsRewardedAdReady());
-
             AudioManager.Instance?.PlaySFX(AudioManager.SFX.LevelFail);
         }
 
@@ -122,23 +115,6 @@ namespace CandyCraze
             AudioManager.Instance?.PlaySFX(AudioManager.SFX.Button);
             Time.timeScale = 1f;
             SceneController.Instance?.GoToLevelMap();
-        }
-
-        private void OnWatchAd()
-        {
-            AudioManager.Instance?.PlaySFX(AudioManager.SFX.Button);
-            AdManager.Instance?.ShowRewardedAd(
-                onRewarded: () =>
-                {
-                    // Give 5 extra moves
-                    Debug.Log("[LoseScreen] Rewarded — granting 5 extra moves.");
-                    if (_panel != null) _panel.SetActive(false);
-                    // TODO: add extra moves to GameManager
-                },
-                onFailed: () =>
-                {
-                    Debug.Log("[LoseScreen] Ad not available.");
-                });
         }
     }
 }

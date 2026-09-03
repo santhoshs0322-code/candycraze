@@ -26,6 +26,12 @@ namespace CandyCraze
         public bool           IsMoving    { get; private set; }
         public bool           IsMatched   { get; set; }
 
+        /// <summary>
+        /// For a LineBlast special: true = clears its COLUMN (vertical bomb),
+        /// false = clears its ROW (horizontal bomb). Set from the match shape.
+        /// </summary>
+        public bool           LineBlastVertical { get; set; }
+
         // ── Components ───────────────────────────────────────
         private SpriteRenderer _sr;
         private SpriteRenderer _highlightSr;
@@ -91,7 +97,11 @@ namespace CandyCraze
             }
 
             // Set scale to 1 immediately — visible right away
-            transform.localScale = Vector3.one;
+            _baseScale = Vector3.one;
+            transform.localScale = _baseScale;
+
+            // Show a marker for special pieces (line bomb / color bomb).
+            RefreshSpecialOverlay();
 
             // Optional pop animation on top
             if (gameObject.activeInHierarchy)
@@ -99,6 +109,72 @@ namespace CandyCraze
                 if (_spawnCoroutine != null) StopCoroutine(_spawnCoroutine);
                 _spawnCoroutine = StartCoroutine(SpawnAnim());
             }
+        }
+
+        // ── Special-piece visual marker ──────────────────────
+        private GameObject _specialOverlay;
+        // The gem's intended resting scale (1 for normal gems; adjusted for
+        // special pieces so their PNG matches normal gem size). SpawnAnim and
+        // other animations return to THIS instead of hard-coded Vector3.one.
+        private Vector3 _baseScale = Vector3.one;
+
+        /// <summary>
+        /// Draws a clear marker on top of the gem so players can tell it is a
+        /// special piece: ↔ / ↕ for line bombs, ✦ (rainbow) for a color bomb.
+        /// Call again after LineBlastVertical is set so the arrow points right.
+        /// </summary>
+        public void RefreshSpecialOverlay()
+        {
+            if (_specialOverlay != null) { Destroy(_specialOverlay); _specialOverlay = null; }
+            if (_sr == null) return;
+
+            Sprite special = null;
+            switch (SpecialType)
+            {
+                case GemSpecialType.ColorCrystal:
+                    special = Resources.Load<Sprite>("Gems/ColorBomb");
+                    break;
+                case GemSpecialType.LineBlast:
+                    // Vertical 4-match clears a COLUMN → vertical stripes.
+                    // Horizontal 4-match clears a ROW → horizontal stripes.
+                    special = Resources.Load<Sprite>(LineBlastVertical ? "Gems/Stripe_V" : "Gems/Stripe_H");
+                    break;
+                // AreaBomb keeps its normal gem sprite for now.
+            }
+
+            if (special == null) return;
+
+            _sr.sprite = special;
+            _sr.color  = Color.white;
+            // Match the special sprite's on-screen size to a normal gem so it
+            // isn't oversized when its PNG has different dimensions/padding.
+            FitSpriteToNormalGemSize(special);
+        }
+
+        // Scales this gem so the special sprite renders the SAME world size as
+        // a normal gem, regardless of the special PNG's pixels-per-unit.
+        private void FitSpriteToNormalGemSize(Sprite special)
+        {
+            if (special == null) return;
+
+            // Reference size = the normal gem sprite's world size (unscaled).
+            float refSize = 1f;
+            if (_def != null && _def.NormalSprite != null)
+                refSize = Mathf.Max(_def.NormalSprite.bounds.size.x, _def.NormalSprite.bounds.size.y);
+            else
+                refSize = Constants.CELL_SIZE * 0.9f;
+
+            float specSize = Mathf.Max(special.bounds.size.x, special.bounds.size.y);
+            if (specSize <= 0.0001f) return;
+
+            // Bump up a bit: the bomb PNGs have transparent padding, so the
+            // visible candy looks smaller than the gems at a 1:1 match. This
+            // factor makes them read as a comfortable MEDIUM size on all phones.
+            const float SPECIAL_SCALE_BOOST = 1.45f;
+
+            float scale = (refSize / specSize) * SPECIAL_SCALE_BOOST;
+            _baseScale = new Vector3(scale, scale, 1f);
+            transform.localScale = _baseScale;
         }
 
         // ── Selection ────────────────────────────────────────
@@ -111,13 +187,13 @@ namespace CandyCraze
             {
                 // Pulsing glow when selected
                 _idleCoroutine = StartCoroutine(SelectPulse());
-                transform.localScale = Vector3.one * 1.12f;
+                transform.localScale = _baseScale * 1.12f;
                 HapticFeedback.Light();
             }
             else
             {
                 // Return to idle
-                transform.localScale = Vector3.one;
+                transform.localScale = _baseScale;
                 if (_glowSr != null) _glowSr.color = new Color(
                     _glowSr.color.r, _glowSr.color.g, _glowSr.color.b, 0f);
                 if (_highlightSr != null) _highlightSr.color = new Color(1f,1f,1f,0f);
@@ -164,14 +240,15 @@ namespace CandyCraze
             {
                 elapsed += Time.deltaTime;
                 float t = elapsed / dur;
-                // Spring overshoot
+                // Spring overshoot — scale relative to the gem's base scale
+                // so special pieces keep their (matched) size.
                 float s = t < 0.7f
                     ? Mathf.Lerp(0f, 1.15f, t / 0.7f)
                     : Mathf.Lerp(1.15f, 1f, (t - 0.7f) / 0.3f);
-                transform.localScale = Vector3.one * s;
+                transform.localScale = _baseScale * s;
                 yield return null;
             }
-            transform.localScale = Vector3.one;
+            transform.localScale = _baseScale;
             _spawnCoroutine = null;
         }
 
@@ -212,7 +289,7 @@ namespace CandyCraze
                     _glowSr.color = new Color(gc.r, gc.g, gc.b, Mathf.Lerp(0.3f, 0.7f, t));
                 if (_highlightSr != null)
                     _highlightSr.color = new Color(1f,1f,1f, Mathf.Lerp(0f, 0.25f, t));
-                transform.localScale = Vector3.one * Mathf.Lerp(1.08f, 1.16f, t);
+                transform.localScale = _baseScale * Mathf.Lerp(1.08f, 1.16f, t);
                 yield return null;
             }
         }

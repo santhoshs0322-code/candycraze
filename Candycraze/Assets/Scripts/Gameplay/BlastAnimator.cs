@@ -305,7 +305,7 @@ namespace CandyCraze
             var go = new GameObject("Debris");
             go.transform.position = start;
             var sr = go.AddComponent<SpriteRenderer>();
-            sr.sprite = WhiteSprite();
+            sr.sprite = DotSprite();   // round particle (not a square)
             sr.sortingOrder = 19;
             Color c = color; c.a = 1f;
             sr.color = c;
@@ -531,6 +531,7 @@ namespace CandyCraze
 
         static Sprite _whiteSprite;
         static Sprite _circleSprite;
+        static Sprite _dotSprite;
 
         static Sprite WhiteSprite()
         {
@@ -540,6 +541,29 @@ namespace CandyCraze
             tex.Apply();
             _whiteSprite = Sprite.Create(tex, new Rect(0,0,4,4), new Vector2(0.5f,0.5f), 4f);
             return _whiteSprite;
+        }
+
+        // Soft FILLED circle — used for round debris/burst particles so the
+        // blast looks rounded (not square).
+        static Sprite DotSprite()
+        {
+            if (_dotSprite != null) return _dotSprite;
+            int size = 64;
+            var tex = new Texture2D(size, size, TextureFormat.RGBA32, false);
+            for (int y = 0; y < size; y++)
+            for (int x = 0; x < size; x++)
+            {
+                float u = x/(float)(size-1)*2f-1f;
+                float v = y/(float)(size-1)*2f-1f;
+                float r = Mathf.Sqrt(u*u+v*v);
+                // solid to ~0.7, soft feather to the edge
+                float a = r <= 0.7f ? 1f : Mathf.Clamp01((1f - r) / 0.3f);
+                tex.SetPixel(x, y, new Color(1, 1, 1, a));
+            }
+            tex.Apply();
+            tex.filterMode = FilterMode.Bilinear;
+            _dotSprite = Sprite.Create(tex, new Rect(0,0,size,size), new Vector2(0.5f,0.5f), size);
+            return _dotSprite;
         }
 
         static Sprite CircleSprite()

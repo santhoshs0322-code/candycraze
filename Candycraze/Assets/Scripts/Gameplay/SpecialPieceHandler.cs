@@ -76,15 +76,20 @@ namespace CandyCraze
         {
             var result = new List<GemView>();
 
-            // Determine orientation based on the match that created it
-            // Default: clear entire row AND column (cross blast for extra fun)
-            for (int c = 0; c < cols; c++)
-                if (grid[gem.Row, c] != null)
-                    result.Add(grid[gem.Row, c]);
-
-            for (int r = 0; r < rows; r++)
-                if (grid[r, gem.Col] != null && !result.Contains(grid[r, gem.Col]))
-                    result.Add(grid[r, gem.Col]);
+            // Directional: a bomb made from a VERTICAL 4-match clears its
+            // COLUMN; one from a HORIZONTAL 4-match clears its ROW.
+            if (gem.LineBlastVertical)
+            {
+                for (int r = 0; r < rows; r++)
+                    if (grid[r, gem.Col] != null)
+                        result.Add(grid[r, gem.Col]);
+            }
+            else
+            {
+                for (int c = 0; c < cols; c++)
+                    if (grid[gem.Row, c] != null)
+                        result.Add(grid[gem.Row, c]);
+            }
 
             return result;
         }
@@ -128,6 +133,19 @@ namespace CandyCraze
         }
 
         // ── Shape Detection ──────────────────────────────────
+
+        /// <summary>
+        /// True if the match group is a straight VERTICAL run (all gems share
+        /// the same column). Used to orient the LineBlast bomb.
+        /// </summary>
+        public static bool IsVerticalMatch(List<GemView> group)
+        {
+            if (group == null || group.Count == 0) return false;
+            int col = group[0].Col;
+            foreach (var g in group)
+                if (g.Col != col) return false;
+            return true;
+        }
 
         private static bool IsLOrTShape(List<GemView> group)
         {

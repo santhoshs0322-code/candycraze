@@ -58,7 +58,7 @@ namespace CandyCraze
 
             // ── Background — candy map image ─────────────────
             var bgGO = MakeImage("BG", root, Vector2.zero, Vector2.one,
-                Vector2.zero, Vector2.zero, new Color(0.08f, 0.05f, 0.20f));
+                Vector2.zero, Vector2.zero, new Color(0.12f, 0.18f, 0.38f));
             var mapBg = Resources.Load<Sprite>("UI/BG_Map");
             if (mapBg != null)
             {
@@ -175,14 +175,16 @@ namespace CandyCraze
 
             var img = go.AddComponent<Image>();
             // Rounded card sprite (same style as buttons)
-            var cardSp = Resources.Load<Sprite>(unlocked ? "UI/BtnBlue" : "UI/BtnDark");
+            // Unlocked cards use a WARM (orange/gold) sprite so they pop
+            // against the deep navy background; locked stay dark.
+            var cardSp = Resources.Load<Sprite>(unlocked ? "UI/BtnGold" : "UI/BtnDark");
             if (cardSp != null)
             {
                 img.sprite = cardSp; img.type = Image.Type.Sliced;
                 img.color = unlocked ? Color.white : new Color(0.7f,0.7f,0.7f);
             }
             else
-                img.color = unlocked ? new Color(0.30f,0.50f,0.95f) : new Color(0.25f,0.25f,0.35f);
+                img.color = unlocked ? new Color(1f,0.60f,0.20f) : new Color(0.25f,0.25f,0.35f);
 
             // Level number
             MakeText("Num", go.transform,

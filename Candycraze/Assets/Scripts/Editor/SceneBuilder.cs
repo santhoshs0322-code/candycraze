@@ -38,7 +38,7 @@ namespace CandyCraze.Editor
         static void BuildBootstrap()
         {
             var sc = NewScene();
-            MakeCam(new Color(0.05f,0.02f,0.12f));
+            MakeCam(new Color(0.10f, 0.15f, 0.32f)); // sky blue
             MakeES();
 
             // Persistent managers
@@ -49,7 +49,6 @@ namespace CandyCraze.Editor
             AddComp<ObjectPool>       (Child("ObjectPool",      mgr));
             AddComp<LivesManager>     (Child("LivesManager",    mgr));
             AddComp<CurrencyManager>  (Child("CurrencyManager", mgr));
-            AddComp<AdManager>        (Child("AdManager",       mgr));
             AddComp<IAPManager>       (Child("IAPManager",      mgr));
             AddComp<DailyRewardManager>(Child("DailyRwdMgr",   mgr));
             AddComp<ShopManager>      (Child("ShopManager",     mgr));
@@ -60,7 +59,7 @@ namespace CandyCraze.Editor
             // Simple splash canvas
             var cv = MakeCanvas("SplashCanvas");
             var bg = MakePanel("BG", cv.transform);
-            bg.GetComponent<Image>().color = new Color(0.05f,0.02f,0.12f);
+            bg.GetComponent<Image>().color = new Color(0.10f, 0.15f, 0.32f); // sky blue
             SetStretch(bg.GetComponent<RectTransform>());
 
             SaveScene(sc, "Bootstrap");
@@ -70,7 +69,7 @@ namespace CandyCraze.Editor
         static void BuildMainMenu()
         {
             var sc = NewScene();
-            MakeCam(new Color(0.05f,0.02f,0.12f));
+            MakeCam(new Color(0.10f, 0.15f, 0.32f)); // sky blue
             MakeES();
 
             var mgr = MakeGO("Managers");
@@ -81,7 +80,6 @@ namespace CandyCraze.Editor
             AddComp<ShopManager>      (Child("SH",  mgr));
             AddComp<LivesManager>     (Child("LM",  mgr));
             AddComp<CurrencyManager>  (Child("CM",  mgr));
-            AddComp<AdManager>        (Child("AD",  mgr));
             AddComp<IAPManager>       (Child("IP",  mgr));
             AddComp<PremiumUIAnimator>(Child("PU",  mgr));
 
@@ -98,7 +96,7 @@ namespace CandyCraze.Editor
         static void BuildLevelMap()
         {
             var sc = NewScene();
-            MakeCam(new Color(0.05f,0.02f,0.12f));
+            MakeCam(new Color(0.10f, 0.15f, 0.32f)); // sky blue
             MakeES();
 
             var mgr = MakeGO("Managers");
@@ -122,7 +120,7 @@ namespace CandyCraze.Editor
             var camGO = MakeGO("Main Camera"); camGO.tag = "MainCamera";
             var cam   = camGO.AddComponent<Camera>();
             cam.orthographic = true; cam.orthographicSize = 5.5f;
-            cam.backgroundColor = new Color(0.05f,0.02f,0.12f);
+            cam.backgroundColor = new Color(0.10f, 0.15f, 0.32f); // sky blue
             cam.clearFlags = CameraClearFlags.SolidColor;
             camGO.AddComponent<AudioListener>();
             camGO.AddComponent<ScreenShake>();
@@ -227,14 +225,15 @@ namespace CandyCraze.Editor
 
             // ── Objective / Task bar — candy panel with a GEM ICON.
             //    Fully redesigned: header pill + a centered icon+text group. ──
+            // Task/goal bar — bright TEAL card, pops on the navy bg,
+            // with a white floating border.
+            var objBarColor = new Color(0.13f, 0.62f, 0.68f, 1f); // bright teal
             var objBar = AnchorPanel(cv.transform,"ObjBar",
-                new Color(0.14f,0.08f,0.30f,0.98f),new Vector2(0.05f,0.775f),new Vector2(0.95f,0.895f));
+                objBarColor, new Vector2(0.05f,0.775f), new Vector2(0.95f,0.895f));
             var objImg = objBar.GetComponent<Image>();
             var panelSp = Resources.Load<Sprite>("UI/Panel");
-            if (panelSp != null) { objImg.sprite = panelSp; objImg.type = Image.Type.Sliced; objImg.color = new Color(0.14f,0.08f,0.30f,0.98f); }
-            var objOutline = objBar.AddComponent<Outline>();
-            objOutline.effectColor = new Color(1f,0.85f,0.2f,0.9f);
-            objOutline.effectDistance = new Vector2(2,-2);
+            if (panelSp != null) { objImg.sprite = panelSp; objImg.type = Image.Type.Sliced; objImg.color = objBarColor; }
+            MakeFloating(objBar, new Color(1f,1f,1f,0.9f)); // white border + shadow
 
             // ── Header pill: "GOAL" chip centered at the top ──
             var goalPill = new GameObject("GoalPill");
@@ -289,12 +288,15 @@ namespace CandyCraze.Editor
             obT.alignment = TextAnchor.MiddleCenter;
             obT.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
             obT.fontStyle = FontStyle.Bold;
-            obT.fontSize = 40;                    // big, fixed
+            // Best-fit that shrinks for MULTI-OBJECTIVE levels (2-3 stacked
+            // lines after level 10) so they stay centered inside the bar
+            // instead of overflowing/misaligning.
             obT.resizeTextForBestFit = true;
-            obT.resizeTextMinSize = 22;           // never shrink below this
-            obT.resizeTextMaxSize = 44;
-            obT.horizontalOverflow = HorizontalWrapMode.Overflow;
-            obT.verticalOverflow = VerticalWrapMode.Overflow;
+            obT.resizeTextMinSize = 12;
+            obT.resizeTextMaxSize = 36;
+            obT.lineSpacing = 1f;
+            obT.horizontalOverflow = HorizontalWrapMode.Wrap;
+            obT.verticalOverflow = VerticalWrapMode.Truncate;
             var obtShadow = obTGO.AddComponent<Shadow>();
             obtShadow.effectColor = new Color(0,0,0,0.6f);
             obtShadow.effectDistance = new Vector2(1.5f,-1.5f);
@@ -314,17 +316,15 @@ namespace CandyCraze.Editor
             cbT.fontStyle = FontStyle.Bold;
             cbGO.SetActive(false);
 
-            // Booster bar — a contained rounded card (inset from edges),
-            // matching the Level/Score/Moves chip style.
+            // Booster bar — warm CORAL/ORANGE card, bright and distinct
+            // from the teal goal bar, with a white floating border.
+            var bstBarColor = new Color(0.95f, 0.45f, 0.35f, 1f); // warm coral
             var bstBar = AnchorPanel(cv.transform,"BoosterBar",
-                new Color(0.12f,0.06f,0.26f,0.98f),
-                new Vector2(0.03f,0.015f), new Vector2(0.97f,0.145f));
+                bstBarColor, new Vector2(0.03f,0.015f), new Vector2(0.97f,0.145f));
             var bstBarImg = bstBar.GetComponent<Image>();
             var bstPanelSp = Resources.Load<Sprite>("UI/Panel");
-            if (bstPanelSp != null) { bstBarImg.sprite = bstPanelSp; bstBarImg.type = Image.Type.Sliced; }
-            var bstOutline = bstBar.AddComponent<Outline>();
-            bstOutline.effectColor = new Color(0.2f,0.9f,1f,0.8f);
-            bstOutline.effectDistance = new Vector2(2,-2);
+            if (bstPanelSp != null) { bstBarImg.sprite = bstPanelSp; bstBarImg.type = Image.Type.Sliced; bstBarImg.color = bstBarColor; }
+            MakeFloating(bstBar, new Color(1f,1f,1f,0.9f)); // white border + shadow
 
             // Header strip label (auto-fit, like the stat chips)
             var bstLblGO = new GameObject("BstLbl");
@@ -528,6 +528,21 @@ namespace CandyCraze.Editor
             return g;
         }
 
+        // Gives a UI GameObject a "floating" look: a soft drop shadow + a
+        // bright border outline. Used on all game HUD divs/buttons.
+        static void MakeFloating(GameObject go, Color borderColor)
+        {
+            if (go == null) return;
+            // Drop shadow (offset down-right) → floating effect
+            var sh = go.AddComponent<Shadow>();
+            sh.effectColor = new Color(0f, 0f, 0f, 0.45f);
+            sh.effectDistance = new Vector2(4f, -5f);
+            // Border outline
+            var ol = go.AddComponent<Outline>();
+            ol.effectColor = borderColor;
+            ol.effectDistance = new Vector2(2.5f, -2.5f);
+        }
+
         // Rounded HUD stat chip with a label (top) + big auto-fit value
         // (bottom). Returns the VALUE Text so it can be wired to UIManager.
         static Text HudStatChip(Transform p, string n, Vector2 amin, Vector2 amax,
@@ -542,9 +557,8 @@ namespace CandyCraze.Editor
             var sp = Resources.Load<Sprite>("UI/Panel");
             if (sp != null) { img.sprite = sp; img.type = Image.Type.Sliced; img.color = c; }
             else img.color = c;
-            var ol = g.AddComponent<Outline>();
-            ol.effectColor = new Color(1,1,1,0.35f);
-            ol.effectDistance = new Vector2(1.5f,-1.5f);
+            // Floating look: white border + soft drop shadow.
+            MakeFloating(g, new Color(1f, 1f, 1f, 0.55f));
 
             // Label (top strip)
             var lg = new GameObject("Lbl"); lg.transform.SetParent(g.transform, false);
@@ -650,6 +664,9 @@ namespace CandyCraze.Editor
             Sprite sp = PickBtnSprite(c);
             if (sp != null) { img.sprite = sp; img.type = Image.Type.Sliced; img.color = Color.white; }
             else img.color = c;
+
+            // Floating look: soft drop shadow + subtle white border.
+            MakeFloating(g, new Color(1f, 1f, 1f, 0.4f));
 
             var btn = g.AddComponent<Button>();
             var cb  = btn.colors;

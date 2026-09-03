@@ -78,34 +78,6 @@ namespace CandyCraze
             Finish("Color Blast");
         }
 
-        // ── Remove Ads ───────────────────────────────────────
-        public void BuyRemoveAds()
-        {
-            IAPManager.Instance?.BuyProduct(
-                IAPProductIDs.RemoveAds,
-                onSuccess: id =>
-                {
-                    IAPManager.Instance.SetAdsRemoved();
-                    OnPurchaseComplete.Invoke();
-                },
-                onFailure: err => Debug.Log($"[Shop] Failed: {err}"));
-        }
-
-        // ── Watch Ad for coins ───────────────────────────────
-        public void WatchAdForCoins()
-        {
-            AdManager.Instance?.ShowRewardedAd(
-                onRewarded: () =>
-                {
-                    if (SaveManager.Instance != null)
-                    {
-                        SaveManager.Instance.Data.Coins += 25;
-                        SaveManager.Instance.Save();
-                        OnPurchaseComplete.Invoke();
-                    }
-                });
-        }
-
         // ── Private ──────────────────────────────────────────
         private bool CanAfford(int cost)
         {

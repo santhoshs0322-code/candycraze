@@ -62,6 +62,9 @@ namespace CandyCraze
 
             var emission = ps.emission;
             emission.enabled = false;
+            // Allocate one burst slot BEFORE calling SetBurst(0, ...),
+            // otherwise Unity warns "Burst index too high [0, max 0]".
+            emission.burstCount = 1;
 
             var burst = new ParticleSystem.Burst(0f, (short)count);
             emission.SetBurst(0, burst);
@@ -72,12 +75,37 @@ namespace CandyCraze
             shape.radius    = 0.1f;
 
             var renderer = ps.GetComponent<ParticleSystemRenderer>();
-            renderer.material = new Material(Shader.Find("Sprites/Default"));
-            renderer.material.color = color;
+            var mat = new Material(Shader.Find("Sprites/Default"));
+            // Give the particle a soft ROUND texture so bursts aren't square.
+            mat.mainTexture = GetRoundParticleTexture();
+            mat.color = color;
+            renderer.material = mat;
             renderer.sortingOrder = 10;
 
             ps.Play();
             Destroy(go, lifetime + 0.5f);
+        }
+
+        // Soft round particle texture (cached) so match bursts render as
+        // circles instead of the default square quad.
+        private static Texture2D _roundTex;
+        private static Texture2D GetRoundParticleTexture()
+        {
+            if (_roundTex != null) return _roundTex;
+            int size = 32;
+            _roundTex = new Texture2D(size, size, TextureFormat.RGBA32, false);
+            for (int y = 0; y < size; y++)
+            for (int x = 0; x < size; x++)
+            {
+                float u = x / (float)(size - 1) * 2f - 1f;
+                float v = y / (float)(size - 1) * 2f - 1f;
+                float r = Mathf.Sqrt(u * u + v * v);
+                float a = r <= 0.6f ? 1f : Mathf.Clamp01((1f - r) / 0.4f);
+                _roundTex.SetPixel(x, y, new Color(1, 1, 1, a));
+            }
+            _roundTex.Apply();
+            _roundTex.filterMode = FilterMode.Bilinear;
+            return _roundTex;
         }
     }
 }

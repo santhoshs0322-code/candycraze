@@ -187,35 +187,24 @@ namespace CandyCraze
             // Show the gem icon for the first "collect gem" objective.
             UpdateObjectiveIcon(objectives);
 
-            // Build a SHORT, stacked task list — one objective per line.
-            // The score is already shown in the top SCORE chip, so we only
-            // include a score line when there is NO collect objective.
-            bool hasCollect = false;
-            foreach (var o in objectives)
-                if (o?.Data != null && o.Data.Type == ObjectiveType.CollectGemType)
-                { hasCollect = true; break; }
-
+            // Build a stacked task list — one objective per line. EVERY
+            // objective is shown (including score) so the player always knows
+            // exactly what's left to finish the level. A ✓ marks completed
+            // goals; the level only ends when ALL show ✓.
             var lines = new System.Collections.Generic.List<string>();
             foreach (var obj in objectives)
             {
                 if (obj?.Data == null) continue;
 
-                // Skip the redundant score objective when a collect goal
-                // exists (score is visible in the HUD chip already).
-                if (obj.Data.Type == ObjectiveType.ReachScore && hasCollect)
-                    continue;
-
                 int target  = obj.Target;
                 int current = Mathf.Min(obj.Current, target);
                 string tick = obj.IsComplete ? "✓ " : "";
 
-                // For collect-gem goals, show ONLY the count — the gem IMAGE
-                // beside it already tells the player which gem. e.g. "0/9".
-                // For other goals (score/blockers, no icon), keep a word label.
                 if (obj.Data.Type == ObjectiveType.CollectGemType)
-                    lines.Add($"{tick}{current}/{target}");
+                    // Gem image beside it shows which gem; text is the count.
+                    lines.Add($"{tick}Collect {current}/{target}");
                 else
-                    lines.Add($"{tick}{ShortObjectiveLabel(obj)}  {current}/{target}");
+                    lines.Add($"{tick}{ShortObjectiveLabel(obj)}  {current:N0}/{target:N0}");
             }
 
             if (lines.Count == 0) lines.Add("Match the gems!");

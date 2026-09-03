@@ -27,8 +27,12 @@ namespace CandyCraze.Editor
             PlayerSettings.SetApplicationIdentifier(
                 BuildTargetGroup.Android, "com.yourcompany.candycraze");
 
-            PlayerSettings.bundleVersion     = "1.0.0";
-            PlayerSettings.Android.bundleVersionCode = 1;
+            PlayerSettings.bundleVersion     = "2.0.1";
+            // NOTE: version code is auto-incremented by Build Release AAB —
+            // don't hard-set it here or it would reset the counter backward.
+            // Ensure it's at least 5 (codes 1-4 already used on Play).
+            if (PlayerSettings.Android.bundleVersionCode < 5)
+                PlayerSettings.Android.bundleVersionCode = 5;
 
             // ── Screen ───────────────────────────────────────
             PlayerSettings.defaultInterfaceOrientation =
@@ -72,13 +76,18 @@ namespace CandyCraze.Editor
             // ── Build type ───────────────────────────────────
             EditorUserBuildSettings.buildAppBundle = true; // AAB for Google Play
 
+            // ── Native debug symbols (fixes the "no debug symbols" warning) ─
+            // Bundles a symbols.zip alongside the AAB so Play Console can
+            // symbolicate native (IL2CPP) crashes/ANRs.
+            EditorUserBuildSettings.androidCreateSymbols = AndroidCreateSymbols.Public;
+
             Debug.Log("[AndroidBuildSetup] ✓ Android settings configured.");
 
             EditorUtility.DisplayDialog(
                 "Android Build Ready",
                 "Android Player Settings configured!\n\n" +
                 "Package: com.yourcompany.candycraze\n" +
-                "Version: 1.0.0 (code 1)\n" +
+                "Version: 2.0.1 (code auto-increments per build)\n" +
                 "Min SDK: Android 7 (API 24)\n" +
                 "Target SDK: Android 13 (API 33)\n" +
                 "Backend: IL2CPP\n" +
@@ -93,6 +102,13 @@ namespace CandyCraze.Editor
         [MenuItem("CandyCraze/Build Release AAB")]
         public static void BuildReleaseAAB()
         {
+            // ── Auto-increment version code so every upload is unique ─────
+            // Google Play rejects reused codes; this guarantees a fresh one
+            // on every build without manual edits.
+            int newCode = PlayerSettings.Android.bundleVersionCode + 1;
+            PlayerSettings.Android.bundleVersionCode = newCode;
+            Debug.Log($"[AndroidBuildSetup] Auto-incremented version code to {newCode}.");
+
             // Verify keystore is set
             if (string.IsNullOrEmpty(PlayerSettings.Android.keystoreName))
             {
@@ -104,6 +120,15 @@ namespace CandyCraze.Editor
                     "OK");
                 return;
             }
+
+            // ── CRITICAL: force App Bundle (AAB) output ──────────────
+            // Without this, Unity builds a plain APK and just names it
+            // ".aab", which Play Console rejects with a vague upload error.
+            EditorUserBuildSettings.buildAppBundle = true;
+            // Make sure we're actually on the Android build target.
+            if (EditorUserBuildSettings.activeBuildTarget != BuildTarget.Android)
+                EditorUserBuildSettings.SwitchActiveBuildTarget(
+                    BuildTargetGroup.Android, BuildTarget.Android);
 
             string outputPath = "Builds/CandyCraze.aab";
 
@@ -133,6 +158,7 @@ namespace CandyCraze.Editor
                 EditorUtility.DisplayDialog(
                     "Build Succeeded!",
                     $"AAB built successfully!\n\n" +
+                    $"Version code: {PlayerSettings.Android.bundleVersionCode}\n" +
                     $"Output: {outputPath}\n" +
                     $"Size: {summary.totalSize / 1048576:F1} MB\n\n" +
                     "Upload this file to Google Play Console\n" +

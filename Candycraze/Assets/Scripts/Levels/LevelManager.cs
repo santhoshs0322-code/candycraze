@@ -55,6 +55,22 @@ namespace CandyCraze
             CurrentLevel = data;
             SelectedLevelNumber = levelNumber;
             Debug.Log($"[LevelManager] Loaded: {data.LevelName}");
+
+            // ── Defensive progress save ──────────────────────
+            // If the player actually reached this level, make sure it's
+            // unlocked in the save and persisted immediately. This guarantees
+            // progress survives even if a win-save edge case is missed, so the
+            // game never wrongly resets to level 3 after reopening.
+            if (SaveManager.Instance != null)
+            {
+                var save = SaveManager.Instance.Data;
+                if (levelNumber > save.CurrentLevel)
+                {
+                    save.CurrentLevel = levelNumber;
+                    SaveManager.Instance.Save();
+                    Debug.Log($"[LevelManager] Unlocked up to level {levelNumber} and saved.");
+                }
+            }
         }
 
         public bool HasNextLevel()

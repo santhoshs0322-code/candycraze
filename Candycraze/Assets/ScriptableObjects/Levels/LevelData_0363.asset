@@ -1,0 +1,47 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 61dc50ea82ce4754faeefed0845c62a1, type: 3}
+  m_Name: LevelData_0363
+  m_EditorClassIdentifier: 
+  LevelNumber: 363
+  LevelName: Level 363
+  Rows: 8
+  Cols: 8
+  TileLayout: []
+  MoveLimit: 15
+  StarThreshold1: 58761
+  StarThreshold2: 105770
+  StarThreshold3: 188035
+  Objectives:
+  - Type: 0
+    TargetScore: 58761
+    GemTypeID: 0
+    TargetAmount: 0
+    Description: Score 58,761
+  - Type: 1
+    TargetScore: 0
+    GemTypeID: 3
+    TargetAmount: 50
+    Description: Collect 50 gems
+  - Type: 1
+    TargetScore: 0
+    GemTypeID: 0
+    TargetAmount: 38
+    Description: Collect 38 crystals
+  GemSpawnWeights:
+  - 1
+  - 1
+  - 1
+  - 1
+  - 1
+  - 1
+  BackgroundSprite: {fileID: 0}

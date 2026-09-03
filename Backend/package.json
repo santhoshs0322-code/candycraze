@@ -1,0 +1,21 @@
+{
+  "name": "candycraze-backend",
+  "version": "1.0.0",
+  "description": "CandyCraze backend — Google login verification + MongoDB Atlas cloud save (one entry per user).",
+  "main": "server.js",
+  "type": "commonjs",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "express": "^4.19.2",
+    "mongoose": "^8.5.1",
+    "google-auth-library": "^9.11.0",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5"
+  }
+}

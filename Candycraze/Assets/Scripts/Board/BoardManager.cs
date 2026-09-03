@@ -321,7 +321,7 @@ namespace CandyCraze
         // ── Match Resolution ─────────────────────────────────
 
         // Pending special pieces to create after destruction
-        private struct PendingSpecial { public int row, col, typeID; public GemSpecialType type; }
+        private struct PendingSpecial { public int row, col, typeID; public GemSpecialType type; public bool vertical; }
         private List<PendingSpecial> _pendingSpecials = new List<PendingSpecial>();
 
         private IEnumerator ResolveMatches(List<List<GemView>> matches, int cascadeLevel)
@@ -336,11 +336,15 @@ namespace CandyCraze
                 if (special == GemSpecialType.None) continue;
 
                 GemView centre = group[group.Count / 2];
+                // For a 4-in-a-row LineBlast, remember the orientation so the
+                // bomb clears the matching direction (vertical vs horizontal).
+                bool vertical = special == GemSpecialType.LineBlast
+                                && SpecialPieceHandler.IsVerticalMatch(group);
                 _pendingSpecials.Add(new PendingSpecial {
                     row = centre.Row, col = centre.Col,
-                    typeID = centre.GemTypeID, type = special
+                    typeID = centre.GemTypeID, type = special, vertical = vertical
                 });
-                Debug.Log($"[BoardManager] Reserved {special} at ({centre.Row},{centre.Col})");
+                Debug.Log($"[BoardManager] Reserved {special} at ({centre.Row},{centre.Col}) vertical={vertical}");
             }
 
             // Collect all gems to destroy (ALL matched gems removed)
@@ -430,8 +434,10 @@ namespace CandyCraze
                     var special = SpawnGem(def, ps.row, ps.col, ps.type);
                     if (special != null)
                     {
+                        special.LineBlastVertical = ps.vertical;
+                        special.RefreshSpecialOverlay();   // update arrow direction
                         AudioManager.Instance?.PlaySFX(AudioManager.SFX.SpecialPiece);
-                        Debug.Log($"[BoardManager] Created {ps.type} at ({ps.row},{ps.col})");
+                        Debug.Log($"[BoardManager] Created {ps.type} at ({ps.row},{ps.col}) vertical={ps.vertical}");
                     }
                 }
                 _pendingSpecials.Clear();
