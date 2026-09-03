@@ -1,0 +1,10 @@
+node_modules
+npm-debug.log
+.env
+.git
+.gitignore
+README.md
+Candycraze
+Candycraze_BurstDebugInformation_DoNotShip
+.vscode
+.DS_Store
