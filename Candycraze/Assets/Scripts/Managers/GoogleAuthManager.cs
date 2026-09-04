@@ -1,11 +1,19 @@
 using UnityEngine;
+
+#if GPGS_PRESENT
 using Google.Play.Games;
 using Google.Play.Games.BasicApi;
-using System.Collections;
+#endif
 
 /// <summary>
 /// GoogleAuthManager handles Google Sign-In for CandyCraze.
 /// Uses Google Play Games plugin for authentication.
+///
+/// NOTE: This script compiles even before the Google Play Games plugin is
+/// imported. Once you import the plugin (Assets > Import Package or via
+/// Package Manager), add the scripting define symbol "GPGS_PRESENT" in
+/// Project Settings > Player > Other Settings > Scripting Define Symbols
+/// to activate the real authentication code below.
 /// </summary>
 public class GoogleAuthManager : MonoBehaviour
 {
@@ -14,10 +22,14 @@ public class GoogleAuthManager : MonoBehaviour
     [SerializeField] private string backendUrl = "https://candycraze.onrender.com";
     [SerializeField] private bool debugMode = true;
 
+    // Your Google Client ID
+    private const string GOOGLE_CLIENT_ID = "787050963672-n0c7i29los0rshojcve4ckal097bhagd.apps.googleusercontent.com";
+
     private string authToken = null;
     private string userId = null;
     private string userEmail = null;
     private string userDisplayName = null;
+    private bool isAuthenticated = false;
 
     // Events
     public delegate void AuthEvent();
@@ -46,6 +58,7 @@ public class GoogleAuthManager : MonoBehaviour
     /// </summary>
     private void InitializeGooglePlayGames()
     {
+#if GPGS_PRESENT
         PlayGamesClientConfiguration config = new PlayGamesClientConfiguration.Builder()
             .RequestIdToken()
             .Build();
@@ -57,8 +70,13 @@ public class GoogleAuthManager : MonoBehaviour
 
         // Try silent sign-in
         SignInSilently();
+#else
+        Log("Google Play Games plugin not imported yet. " +
+            "Import the plugin and add 'GPGS_PRESENT' to Scripting Define Symbols to enable real sign-in.");
+#endif
     }
 
+#if GPGS_PRESENT
     /// <summary>
     /// Attempt silent sign-in (user already logged in on device).
     /// </summary>
@@ -76,6 +94,7 @@ public class GoogleAuthManager : MonoBehaviour
         {
             Log("Silent sign-in successful");
             ExtractUserInfo();
+            isAuthenticated = true;
             OnLoginSuccess?.Invoke();
         }
         else
@@ -100,6 +119,7 @@ public class GoogleAuthManager : MonoBehaviour
 
         Log($"User: {userDisplayName} | Email: {userEmail} | ID: {userId}");
     }
+#endif
 
     /// <summary>
     /// Public method: Sign in with Google (interactive).
@@ -107,9 +127,11 @@ public class GoogleAuthManager : MonoBehaviour
     /// </summary>
     public void SignInWithGoogle()
     {
+#if GPGS_PRESENT
         if (PlayGamesPlatform.Instance.IsAuthenticated())
         {
             Log("Already authenticated");
+            isAuthenticated = true;
             OnLoginSuccess?.Invoke();
             return;
         }
@@ -121,14 +143,20 @@ public class GoogleAuthManager : MonoBehaviour
             {
                 Log("Interactive sign-in successful");
                 ExtractUserInfo();
+                isAuthenticated = true;
                 OnLoginSuccess?.Invoke();
             }
             else
             {
                 Log("Interactive sign-in failed: " + status);
+                isAuthenticated = false;
                 OnLoginFailed?.Invoke();
             }
         });
+#else
+        Log("Cannot sign in: Google Play Games plugin not imported yet.");
+        OnLoginFailed?.Invoke();
+#endif
     }
 
     /// <summary>
@@ -136,11 +164,14 @@ public class GoogleAuthManager : MonoBehaviour
     /// </summary>
     public void SignOut()
     {
+#if GPGS_PRESENT
         PlayGamesPlatform.Instance.SignOut();
+#endif
         authToken = null;
         userId = null;
         userEmail = null;
         userDisplayName = null;
+        isAuthenticated = false;
         Log("Signed out");
         OnLogoutSuccess?.Invoke();
     }
@@ -182,7 +213,11 @@ public class GoogleAuthManager : MonoBehaviour
     /// </summary>
     public bool IsAuthenticated()
     {
+#if GPGS_PRESENT
         return PlayGamesPlatform.Instance.IsAuthenticated();
+#else
+        return isAuthenticated;
+#endif
     }
 
     /// <summary>

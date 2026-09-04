@@ -1,6 +1,5 @@
 using UnityEngine;
 using UnityEngine.UI;
-using TMPro;
 
 /// <summary>
 /// LoginUI manages the login UI panel and profile icon.
@@ -10,12 +9,12 @@ public class LoginUI : MonoBehaviour
 {
     [SerializeField] private Button profileIconButton;
     [SerializeField] private Image profileIconImage;
-    [SerializeField] private TextMeshProUGUI userNameText;
+    [SerializeField] private Text userNameText;
 
     [SerializeField] private GameObject loginPanel;
     [SerializeField] private Button signInButton;
     [SerializeField] private Button signOutButton;
-    [SerializeField] private TextMeshProUGUI statusText;
+    [SerializeField] private Text statusText;
 
     [SerializeField] private Color onlineColor = Color.green;
     [SerializeField] private Color offlineColor = Color.red;
