@@ -1,188 +1,135 @@
+using System;
+using System.Collections;
+using CandyCraze;
 using UnityEngine;
 using UnityEngine.Networking;
-using System.Collections;
-using System.Collections.Generic;
 
-/// <summary>
-/// CloudSaveManager handles cloud save/load to the CandyCraze backend.
-/// Only uploads/downloads when online (network reachability check).
-/// </summary>
 public class CloudSaveManager : MonoBehaviour
 {
     public static CloudSaveManager Instance { get; private set; }
-
     [SerializeField] private string backendUrl = "https://candycraze.onrender.com";
-    [SerializeField] private bool debugMode = true;
-
-    private const string SAVE_ENDPOINT = "/api/save/upload";
-    private const string LOAD_ENDPOINT = "/api/save/download";
-
-    // Events
+    private string sessionToken;
+    private bool syncing, conflict;
+    private float nextRetry;
+    public string PlayerId { get; private set; }
+    public string DisplayName { get; private set; }
+    public bool IsSignedIn => !string.IsNullOrEmpty(sessionToken);
+    public string StatusMessage { get; private set; } = "Guest progress stays on this device.";
     public delegate void SaveEvent(bool success, string message);
-    public event SaveEvent OnSaveComplete;
-    public event SaveEvent OnLoadComplete;
-
+    public event SaveEvent OnSaveComplete, OnLoadComplete;
     private void Awake()
     {
-        if (Instance != null && Instance != this)
-        {
-            Destroy(gameObject);
-            return;
-        }
-        Instance = this;
-        DontDestroyOnLoad(gameObject);
+        if (Instance != null && Instance != this) { Destroy(gameObject); return; }
+        Instance = this; transform.SetParent(null); DontDestroyOnLoad(gameObject);
     }
-
-    /// <summary>
-    /// Upload game save to backend.
-    /// Only works if online.
-    /// </summary>
-    public void UploadSave(string saveData)
+    public void SignInAndRestore(string code, Action<bool, string> completed)
     {
-        // Check network connectivity
-        if (!IsOnline())
-        {
-            Log("Offline: save not uploaded. Will retry when online.");
-            OnSaveComplete?.Invoke(false, "Offline - save queued locally");
-            return;
-        }
-
-        StartCoroutine(UploadSaveCoroutine(saveData));
+        if (syncing) { completed?.Invoke(false, "A connection is already in progress."); return; }
+        if (Application.internetReachability == NetworkReachability.NotReachable)
+        { completed?.Invoke(false, "No internet connection. Please try again when online."); return; }
+        StartCoroutine(Login(code, completed));
     }
-
-    /// <summary>
-    /// Download game save from backend.
-    /// Only works if online.
-    /// </summary>
-    public void DownloadSave()
+    private IEnumerator Login(string code, Action<bool, string> completed)
     {
-        if (!IsOnline())
+        syncing = true;
+        using (var request = Request("/api/auth/play-games", JsonUtility.ToJson(new LoginRequest { authorizationCode = code, appVersion = Application.version })))
         {
-            Log("Offline: cannot download save");
-            OnLoadComplete?.Invoke(false, "Offline - cannot download");
-            return;
-        }
-
-        StartCoroutine(DownloadSaveCoroutine());
-    }
-
-    /// <summary>
-    /// Coroutine: Upload save.
-    /// </summary>
-    private IEnumerator UploadSaveCoroutine(string saveData)
-    {
-        string token = GoogleAuthManager.Instance.GetAuthToken();
-
-        if (string.IsNullOrEmpty(token))
-        {
-            Log("No auth token - cannot upload");
-            OnSaveComplete?.Invoke(false, "Not authenticated");
-            yield break;
-        }
-
-        string url = backendUrl + SAVE_ENDPOINT;
-        Log($"Uploading to {url}");
-
-        // Prepare JSON payload
-        SaveUploadPayload payload = new SaveUploadPayload { saveData = saveData };
-        string jsonData = JsonUtility.ToJson(payload);
-
-        using (UnityWebRequest request = new UnityWebRequest(url, "POST"))
-        {
-            byte[] bodyRaw = System.Text.Encoding.UTF8.GetBytes(jsonData);
-            request.uploadHandler = new UploadRawData(bodyRaw);
-            request.downloadHandler = new DownloadHandlerBuffer();
-            request.SetRequestHeader("Content-Type", "application/json");
-            request.SetRequestHeader("Authorization", "Bearer " + token);
-
             yield return request.SendWebRequest();
-
-            if (request.result == UnityWebRequest.Result.Success)
+            LoginResponse response = null;
+            try { response = JsonUtility.FromJson<LoginResponse>(request.downloadHandler.text); } catch (Exception) { }
+            if (request.result != UnityWebRequest.Result.Success || response == null || !response.success ||
+                string.IsNullOrEmpty(response.sessionToken) || string.IsNullOrEmpty(response.user?.playerId) ||
+                SaveManager.Instance == null)
             {
-                Log("Save uploaded successfully");
-                OnSaveComplete?.Invoke(true, "Save uploaded");
+                syncing = false;
+                completed?.Invoke(false, response?.error ?? "Cloud sign-in unavailable. Please retry.");
+                yield break;
+            }
+            if (!SaveManager.Instance.RestoreAccount(response.user.playerId, response.user.saveData, response.revision))
+            {
+                syncing = false;
+                completed?.Invoke(false, "Cloud progress is invalid. Your guest progress is unchanged.");
+                yield break;
+            }
+            sessionToken = response.sessionToken;
+            PlayerId = response.user.playerId; DisplayName = response.user.displayName;
+            conflict = false; syncing = false;
+            StatusMessage = SaveManager.Instance.HasPendingSave ? "Syncing device progress..." : "Cloud progress is up to date.";
+            OnLoadComplete?.Invoke(true, StatusMessage);
+            completed?.Invoke(true, "Your saved adventure is ready.");
+            UploadCurrentSave();
+        }
+    }
+    public void UploadCurrentSave()
+    {
+        if (!IsSignedIn || syncing || conflict || SaveManager.Instance == null || !SaveManager.Instance.HasPendingSave) return;
+        if (Application.internetReachability == NetworkReachability.NotReachable)
+        { StatusMessage = "Offline. Progress backed up on this device."; return; }
+        StartCoroutine(Upload());
+    }
+    private IEnumerator Upload()
+    {
+        syncing = true;
+        string json = SaveManager.Instance.SerializeData();
+        int generation = SaveManager.Instance.SaveGeneration;
+        var body = new UploadRequest { sessionToken = sessionToken, saveData = json, revision = SaveManager.Instance.CloudRevision };
+        StatusMessage = "Saving your adventure...";
+        using (var request = Request("/api/save/upload", JsonUtility.ToJson(body)))
+        {
+            yield return request.SendWebRequest();
+            Response response = null;
+            try { response = JsonUtility.FromJson<Response>(request.downloadHandler.text); } catch (Exception) { }
+            syncing = false;
+            nextRetry = Time.realtimeSinceStartup + 15;
+            if (request.result == UnityWebRequest.Result.Success && response != null && response.success)
+            {
+                SaveManager.Instance.AcknowledgeUpload(response.revision, generation);
+                StatusMessage = "Cloud progress is up to date.";
+                OnSaveComplete?.Invoke(true, StatusMessage);
+                UploadCurrentSave(); // Do not drop changes made while the previous save was in flight.
             }
             else
             {
-                Log($"Upload failed: {request.error} - {request.downloadHandler.text}");
-                OnSaveComplete?.Invoke(false, "Upload failed: " + request.error);
+                conflict = request.responseCode == 409 || request.responseCode == 401;
+                StatusMessage = conflict ? "Session changed. Sign out and sign in to load the latest cloud save."
+                    : "Upload delayed. Progress backed up on this device; retrying.";
+                OnSaveComplete?.Invoke(false, StatusMessage);
             }
         }
     }
-
-    /// <summary>
-    /// Coroutine: Download save.
-    /// </summary>
-    private IEnumerator DownloadSaveCoroutine()
+    private void Update()
     {
-        string token = GoogleAuthManager.Instance.GetAuthToken();
-
-        if (string.IsNullOrEmpty(token))
-        {
-            Log("No auth token - cannot download");
-            OnLoadComplete?.Invoke(false, "Not authenticated");
-            yield break;
-        }
-
-        string url = backendUrl + LOAD_ENDPOINT;
-        Log($"Downloading from {url}");
-
-        using (UnityWebRequest request = UnityWebRequest.Get(url))
-        {
-            request.SetRequestHeader("Authorization", "Bearer " + token);
-
+        if (Time.realtimeSinceStartup >= nextRetry)
+        { nextRetry = Time.realtimeSinceStartup + 15; UploadCurrentSave(); }
+    }
+    public void SignOut()
+    {
+        if (IsSignedIn && SaveManager.Instance != null) SaveManager.Instance.Save();
+        string oldToken = sessionToken;
+        StopAllCoroutines(); // Cancels restore/upload callbacks before switching profile.
+        sessionToken = null; PlayerId = DisplayName = null; syncing = conflict = false;
+        StatusMessage = "Guest progress stays on this device.";
+        if (!string.IsNullOrEmpty(oldToken)) StartCoroutine(Revoke(oldToken));
+    }
+    private IEnumerator Revoke(string token)
+    {
+        using (var request = Request("/api/auth/logout", JsonUtility.ToJson(new LogoutRequest { sessionToken = token })))
             yield return request.SendWebRequest();
-
-            if (request.result == UnityWebRequest.Result.Success)
-            {
-                string responseText = request.downloadHandler.text;
-                Log($"Save downloaded: {responseText}");
-
-                // Parse response
-                SaveDownloadPayload response = JsonUtility.FromJson<SaveDownloadPayload>(responseText);
-                OnLoadComplete?.Invoke(true, response.saveData);
-            }
-            else
-            {
-                Log($"Download failed: {request.error} - {request.downloadHandler.text}");
-                OnLoadComplete?.Invoke(false, "Download failed: " + request.error);
-            }
-        }
     }
-
-    /// <summary>
-    /// Check if device is online.
-    /// </summary>
-    private bool IsOnline()
+    private UnityWebRequest Request(string path, string json)
     {
-        NetworkReachability reachability = Application.internetReachability;
-        bool online = reachability != NetworkReachability.NotReachable;
-
-        if (!online)
-            Log("Device is OFFLINE");
-
-        return online;
+        var request = new UnityWebRequest(backendUrl.TrimEnd('/') + path, "POST")
+        {
+            uploadHandler = new UploadHandlerRaw(System.Text.Encoding.UTF8.GetBytes(json)),
+            downloadHandler = new DownloadHandlerBuffer(), timeout = 60
+        };
+        request.SetRequestHeader("Content-Type", "application/json");
+        return request;
     }
-
-    /// <summary>
-    /// Debug logging.
-    /// </summary>
-    private void Log(string message)
-    {
-        if (debugMode)
-            Debug.Log("[CloudSaveManager] " + message);
-    }
-
-    // ============ Serializable Payload Classes ============
-    [System.Serializable]
-    private class SaveUploadPayload
-    {
-        public string saveData;
-    }
-
-    [System.Serializable]
-    private class SaveDownloadPayload
-    {
-        public string saveData;
-    }
+    [Serializable] private class LoginRequest { public string authorizationCode, appVersion; }
+    [Serializable] private class LogoutRequest { public string sessionToken; }
+    [Serializable] private class UploadRequest { public string sessionToken, saveData; public int revision; }
+    [Serializable] private class Response { public bool success; public string error; public int revision; }
+    [Serializable] private class LoginResponse : Response { public string sessionToken; public CloudUser user; }
+    [Serializable] private class CloudUser { public string playerId, displayName, saveData; }
 }

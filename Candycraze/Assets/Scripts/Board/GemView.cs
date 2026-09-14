@@ -72,9 +72,9 @@ namespace CandyCraze
             if (_sr == null) _sr = gameObject.AddComponent<SpriteRenderer>();
 
             // Apply sprite — the glossy sprite already has colour baked in
-            if (def.NormalSprite != null)
+            if (def.CandySprite != null)
             {
-                _sr.sprite = def.NormalSprite;
+                _sr.sprite = def.CandySprite;
                 _sr.color  = Color.white;  // don't tint — sprite has the gem colour
             }
             else
@@ -128,7 +128,8 @@ namespace CandyCraze
             if (_specialOverlay != null) { Destroy(_specialOverlay); _specialOverlay = null; }
             if (_sr == null) return;
 
-            Sprite special = null;
+            Sprite special = CandyArtwork.GetPower(SpecialType, LineBlastVertical);
+            if (special == null)
             switch (SpecialType)
             {
                 case GemSpecialType.ColorCrystal:
@@ -139,13 +140,17 @@ namespace CandyCraze
                     // Horizontal 4-match clears a ROW → horizontal stripes.
                     special = Resources.Load<Sprite>(LineBlastVertical ? "Gems/Stripe_V" : "Gems/Stripe_H");
                     break;
-                // AreaBomb keeps its normal gem sprite for now.
+                case GemSpecialType.AreaBomb:
+                    special = Resources.Load<Sprite>("Gems/WrappedBomb");
+                    break;
             }
 
             if (special == null) return;
 
             _sr.sprite = special;
             _sr.color  = Color.white;
+            if (_glowSr != null) _glowSr.sprite = special;
+            if (_highlightSr != null) _highlightSr.sprite = special;
             // Match the special sprite's on-screen size to a normal gem so it
             // isn't oversized when its PNG has different dimensions/padding.
             FitSpriteToNormalGemSize(special);
@@ -159,8 +164,8 @@ namespace CandyCraze
 
             // Reference size = the normal gem sprite's world size (unscaled).
             float refSize = 1f;
-            if (_def != null && _def.NormalSprite != null)
-                refSize = Mathf.Max(_def.NormalSprite.bounds.size.x, _def.NormalSprite.bounds.size.y);
+            if (_def != null && _def.CandySprite != null)
+                refSize = Mathf.Max(_def.CandySprite.bounds.size.x, _def.CandySprite.bounds.size.y);
             else
                 refSize = Constants.CELL_SIZE * 0.9f;
 
@@ -170,7 +175,7 @@ namespace CandyCraze
             // Bump up a bit: the bomb PNGs have transparent padding, so the
             // visible candy looks smaller than the gems at a 1:1 match. This
             // factor makes them read as a comfortable MEDIUM size on all phones.
-            const float SPECIAL_SCALE_BOOST = 1.45f;
+            float SPECIAL_SCALE_BOOST = CandyArtwork.GetPower(SpecialType, LineBlastVertical) != null ? 1f : 1.45f;
 
             float scale = (refSize / specSize) * SPECIAL_SCALE_BOOST;
             _baseScale = new Vector3(scale, scale, 1f);

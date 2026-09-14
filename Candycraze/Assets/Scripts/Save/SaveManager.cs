@@ -1,145 +1,164 @@
-// ============================================================
-// SaveManager.cs
-// Serialises and deserialises SaveData to/from PlayerPrefs
-// using JSON.  Survives scene transitions via DontDestroyOnLoad.
-//
-// Usage:
-//   SaveManager.Instance.Data.Coins += 10;
-//   SaveManager.Instance.Save();
-// ============================================================
-
+using System;
 using System.IO;
+using System.Security.Cryptography;
+using System.Text;
 using UnityEngine;
-
 namespace CandyCraze
 {
     public class SaveManager : MonoBehaviour
     {
-        // ── Singleton ────────────────────────────────────────
         public static SaveManager Instance { get; private set; }
-
-        // ── Data ─────────────────────────────────────────────
         public SaveData Data { get; private set; } = new SaveData();
-
-        // File path in persistent storage (reliable on Android; survives
-        // app close/reopen far better than PlayerPrefs).
-        private static string SavePath =>
-            Path.Combine(Application.persistentDataPath, "candycraze_save.json");
-
-        // ────────────────────────────────────────────────────
+        public event Action OnDataChanged;
+        public string AccountId { get; private set; }
+        public int CloudRevision { get; private set; }
+        public bool HasPendingSave { get; private set; }
+        public int SaveGeneration { get; private set; }
+        private bool loaded;
+        private string Key => string.IsNullOrEmpty(AccountId) ? "guest_v2" : AccountKey(AccountId);
+        private string SavePath => Path.Combine(Application.persistentDataPath, Key + ".json");
+        [Serializable] private class LocalProfile { public SaveData data; public int revision; public bool pending; }
+        private static string AccountKey(string id)
+        {
+            using (var sha = SHA256.Create())
+                return "player_" + BitConverter.ToString(sha.ComputeHash(Encoding.UTF8.GetBytes(id))).Replace("-", "");
+        }
         private void Awake()
         {
-            if (Instance != null && Instance != this)
-            {
-                Destroy(gameObject);
-                return;
-            }
+            if (Instance != null && Instance != this) { Destroy(gameObject); return; }
             Instance = this;
+            transform.SetParent(null);
             DontDestroyOnLoad(gameObject);
-
-            // Load immediately on Awake too, so data is ready even if some
-            // scene forgets to call Load() (defensive).
-            if (!_loaded) Load();
+            Load();
         }
-
-        private bool _loaded;
-
-        // ── Public API ───────────────────────────────────────
-
-        /// <summary>Loads save data from a file (falls back to PlayerPrefs).</summary>
+        // The old shared file is preserved, but is not imported because its owner is unknown.
         public void Load()
         {
-            _loaded = true;
-            try
-            {
-                // 1. Preferred: JSON file in persistent storage.
-                if (File.Exists(SavePath))
-                {
-                    string json = File.ReadAllText(SavePath);
-                    Data = JsonUtility.FromJson<SaveData>(json) ?? new SaveData();
-                    Debug.Log($"[SaveManager] Loaded FILE save (level {Data.CurrentLevel}, " +
-                              $"coins {Data.Coins}). Path: {SavePath}");
-                    return;
-                }
-
-                // 2. Fallback: migrate an old PlayerPrefs save if present.
-                if (PlayerPrefs.HasKey(Constants.PREF_SAVE_DATA))
-                {
-                    string json = PlayerPrefs.GetString(Constants.PREF_SAVE_DATA);
-                    Data = JsonUtility.FromJson<SaveData>(json) ?? new SaveData();
-                    Debug.Log($"[SaveManager] Migrated PlayerPrefs save (level {Data.CurrentLevel}).");
-                    Save(); // write it to the file so future loads use the file
-                    return;
-                }
-
-                Data = new SaveData();
-                Debug.Log("[SaveManager] No save found — starting fresh.");
-            }
-            catch (System.Exception ex)
-            {
-                Debug.LogWarning($"[SaveManager] Corrupt/failed load — resetting. ({ex.Message})");
-                Data = new SaveData();
-            }
+            if (loaded) return;
+            loaded = true;
+            Data = new SaveData();
+            Data = ReadProfile(Key, out _)?.data ?? new SaveData();
+            Data.Normalise();
         }
-
-        /// <summary>Persists current Data to BOTH a file and PlayerPrefs.</summary>
+        private LocalProfile ReadProfile(string key, out string sourceJson)
+        {
+            string path = Path.Combine(Application.persistentDataPath, key + ".json");
+            for (int source = 0; source < 3; source++)
+            {
+                try
+                {
+                    string json = source == 1 ? PlayerPrefs.GetString(key, "") :
+                        File.Exists(source == 0 ? path : path + ".bak") ? File.ReadAllText(source == 0 ? path : path + ".bak") : "";
+                    if (string.IsNullOrWhiteSpace(json)) continue;
+                    var profile = JsonUtility.FromJson<LocalProfile>(json);
+                    if (profile?.data == null) continue;
+                    profile.data.Normalise();
+                    sourceJson = json;
+                    return profile;
+                }
+                catch (Exception) { /* Try the independent backup before resetting. */ }
+            }
+            sourceJson = null;
+            return null;
+        }
         public void Save()
         {
-            string json;
-            try { json = JsonUtility.ToJson(Data, prettyPrint: false); }
-            catch (System.Exception ex)
-            {
-                Debug.LogError($"[SaveManager] Serialize failed: {ex.Message}");
-                return;
-            }
-
-            // 1. Write to file (primary, reliable on Android).
-            try
-            {
-                File.WriteAllText(SavePath, json);
-            }
-            catch (System.Exception ex)
-            {
-                Debug.LogError($"[SaveManager] File write failed: {ex.Message}");
-            }
-
-            // 2. Also write to PlayerPrefs as a secondary backup.
-            try
-            {
-                PlayerPrefs.SetString(Constants.PREF_SAVE_DATA, json);
-                PlayerPrefs.Save();
-            }
-            catch { /* non-fatal */ }
-
-            Debug.Log($"[SaveManager] Saved (level {Data.CurrentLevel}). File: {SavePath}");
+            SaveGeneration++;
+            Data.UpdatedAtUtc = DateTime.UtcNow.ToString("O");
+            Data.AppVersion = Application.version;
+            if (!string.IsNullOrEmpty(AccountId)) HasPendingSave = true;
+            Persist();
+            OnDataChanged?.Invoke();
+            if (!string.IsNullOrEmpty(AccountId)) CloudSaveManager.Instance?.UploadCurrentSave();
         }
-
-        /// <summary>Wipes all save data (use for testing or a reset-game feature).</summary>
-        public void DeleteSave()
+        private void Persist()
         {
-            try { if (File.Exists(SavePath)) File.Delete(SavePath); } catch { }
-            PlayerPrefs.DeleteKey(Constants.PREF_SAVE_DATA);
+            string json = JsonUtility.ToJson(new LocalProfile { data = Data, revision = CloudRevision, pending = HasPendingSave });
+            try
+            {
+                File.WriteAllText(SavePath + ".tmp", json);
+                if (File.Exists(SavePath)) File.Replace(SavePath + ".tmp", SavePath, SavePath + ".bak");
+                else File.Move(SavePath + ".tmp", SavePath);
+            }
+            catch (Exception) { Debug.LogWarning("[Save] File backup failed; using preferences backup."); }
+            PlayerPrefs.SetString(Key, json);
+            PlayerPrefs.Save();
+        }
+        public bool RestoreAccount(string playerId, string json, int revision)
+        {
+            if (string.IsNullOrWhiteSpace(playerId)) return false;
+            SaveData restored;
+            try
+            {
+                restored = new SaveData();
+                if (!string.IsNullOrWhiteSpace(json) && json.Trim() != "{}")
+                {
+                    if (!json.TrimStart().StartsWith("{")) return false;
+                    JsonUtility.FromJsonOverwrite(json, restored);
+                }
+                restored.Normalise();
+            }
+            catch (Exception) { return false; }
+            bool pending = false;
+            string accountPath = Path.Combine(Application.persistentDataPath, AccountKey(playerId) + ".json");
+            try
+            {
+                var local = ReadProfile(AccountKey(playerId), out string localJson);
+                if (local?.data != null && local.pending)
+                {
+                    if (local.revision == revision) { restored = local.data; restored.Normalise(); pending = true; }
+                    else
+                    {
+                        File.WriteAllText(accountPath + ".conflict", localJson);
+                        Debug.LogWarning("[Save] Newer cloud progress loaded. Unsent device progress retained in recovery file.");
+                    }
+                }
+            }
+            catch (Exception) { Debug.LogWarning("[Save] Account backup unavailable; loading cloud progress."); }
+            AccountId = playerId;
+            CloudRevision = revision;
+            HasPendingSave = pending;
+            Data = restored;
+            Persist();
+            ApplySettings();
+            OnDataChanged?.Invoke();
+            return true;
+        }
+        public void AcknowledgeUpload(int revision, int uploadedGeneration)
+        {
+            CloudRevision = revision;
+            // Live play-time counters change every frame; only explicit Save calls
+            // enqueue another upload, preventing a continuous upload loop.
+            HasPendingSave = SaveGeneration != uploadedGeneration;
+            Persist();
+        }
+        public void ResetToGuest()
+        {
+            AccountId = null; CloudRevision = 0; HasPendingSave = false;
             Data = new SaveData();
-            Debug.Log("[SaveManager] Save deleted.");
+            LevelManager.SelectedLevelNumber = 1;
+            Persist();
+            ApplySettings();
+            OnDataChanged?.Invoke();
         }
-
-        // Auto-save when the app is paused (goes to background). On Android
-        // this is the most RELIABLE save point — OnApplicationQuit is often
-        // NOT called when the OS kills a backgrounded app.
-        private void OnApplicationPause(bool pause)
+        private void ApplySettings()
         {
-            if (pause) Save();
+            AudioManager.Instance?.SetSoundOn(Data.SoundOn);
+            AudioManager.Instance?.SetMusicOn(Data.MusicOn);
         }
-
-        // Also save when the app loses focus (extra safety on mobile).
-        private void OnApplicationFocus(bool hasFocus)
+        public bool TryApplyCloudSave(string json)
         {
-            if (!hasFocus) Save();
+            try
+            {
+                var restored = JsonUtility.FromJson<SaveData>(json);
+                if (restored == null) return false;
+                restored.Normalise(); Data = restored; Save(); return true;
+            }
+            catch (Exception) { return false; }
         }
-
-        private void OnApplicationQuit()
-        {
-            Save();
-        }
+        public string SerializeData() => JsonUtility.ToJson(Data);
+        public void DeleteSave() { Data = new SaveData(); Save(); }
+        private void OnApplicationPause(bool paused) { if (paused) Save(); }
+        private void OnApplicationQuit() { Save(); }
     }
 }

@@ -63,7 +63,13 @@ public class LoginUI : MonoBehaviour
     {
         Debug.Log("[LoginUI] Sign In button pressed");
         if (GoogleAuthManager.Instance != null)
+        {
             GoogleAuthManager.Instance.SignInWithGoogle();
+        }
+        else
+        {
+            Debug.LogError("[LoginUI] GoogleAuthManager is missing. Add it to the Bootstrap or MainMenu scene.");
+        }
     }
 
     /// <summary>
@@ -93,6 +99,7 @@ public class LoginUI : MonoBehaviour
     /// </summary>
     private void UpdateUI()
     {
+        if (GoogleAuthManager.Instance == null) return;
         bool isAuthenticated = GoogleAuthManager.Instance.IsAuthenticated();
 
         // Show/hide profile icon

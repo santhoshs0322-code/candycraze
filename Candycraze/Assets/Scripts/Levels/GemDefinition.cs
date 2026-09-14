@@ -24,6 +24,7 @@ namespace CandyCraze
         [Header("Visuals")]
         [Tooltip("Normal sprite shown on the board.")]
         public Sprite   NormalSprite;
+        public Sprite CandySprite => CandyArtwork.GetNormal(GemTypeID) ?? NormalSprite;
 
         [Tooltip("Highlighted sprite (when selected).")]
         public Sprite   HighlightSprite;

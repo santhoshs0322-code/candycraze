@@ -48,6 +48,68 @@ namespace CandyCraze
         };
 
         private Coroutine _comboCoroutine;
+        private Text _boosterHint;
+        private readonly Text[] _premiumBoosterCounts = new Text[5];
+        private readonly Button[] _premiumBoosters = new Button[5];
+
+        private void BuildPremiumUI()
+        {
+            var root = CandyTheme.Page("PremiumGameHUD", false);
+            var background = GameObject.Find("GameBG");
+            if (background != null && background.TryGetComponent<SpriteRenderer>(out var backdrop))
+            {
+                backdrop.sprite = CandyTheme.GameBackdrop;
+                backdrop.color = Color.white;
+                background.SendMessage("Fit", SendMessageOptions.DontRequireReceiver);
+            }
+            var header = CandyTheme.Card(root,"GameHeader",.035f,.872f,.965f,.985f,CandyTheme.Cream);
+            _livesText = CandyTheme.Label(header.transform,"LEVEL",.04f,.56f,.32f,.96f,32,CandyTheme.Pink);
+            CandyTheme.Button(header.transform,"II",.83f,.18f,.96f,.82f,CandyTheme.Purple,OnPausePressed,36);
+            CandyTheme.Label(header.transform,"SCORE",.04f,.31f,.32f,.57f,21);
+            _scoreText = CandyTheme.Label(header.transform,"0",.04f,.02f,.32f,.35f,36);
+            var moves = CandyTheme.Card(header.transform,"Moves",.4f,.10f,.76f,.91f,CandyTheme.Pink,false);
+            CandyTheme.Label(moves.transform,"MOVES",.05f,.63f,.95f,.95f,23,Color.white);
+            _movesText = CandyTheme.Label(moves.transform,"0",.05f,.04f,.95f,.66f,62,Color.white);
+            var goals = CandyTheme.Card(root,"Goals",.07f,.774f,.93f,.86f,CandyTheme.Cream);
+            CandyTheme.Label(goals.transform,"YOUR GOAL",.04f,.66f,.96f,.96f,22);
+            _objectiveIcon = CandyTheme.SpriteImage(goals.transform,null,.06f,.10f,.21f,.65f);
+            _objectiveText = CandyTheme.Label(goals.transform,"Match the candies!",.24f,.06f,.94f,.66f,30);
+            _comboText = CandyTheme.Label(root,"Sweet!",.08f,.45f,.92f,.58f,85,CandyTheme.Gold);
+            var tray = CandyTheme.Card(root,"BoosterTray",.03f,.022f,.97f,.153f,CandyTheme.Cream);
+            _boosterHint = CandyTheme.Label(tray.transform,"A LITTLE HELP GOES A LONG WAY",.02f,.75f,.98f,.98f,20);
+            string[] names = { "HAMMER", "BLAST", "SHUFFLE", "+5 MOVES", "COLOR" };
+            for (int i = 0; i < 5; i++)
+            {
+                var type = (BoosterType)i;
+                var button = CandyTheme.Button(tray.transform,names[i],.025f+i*.194f,.29f,.199f+i*.194f,.72f,
+                    i%2==0?CandyTheme.Purple:CandyTheme.Pink,() => {
+                        var manager = BoosterManager.Instance;
+                        if (manager == null) return;
+                        if (manager.ActiveBooster == type) { manager.Cancel(); _boosterHint.text="Booster cancelled"; }
+                        else if (manager.TryActivate(type)) _boosterHint.text=manager.ActiveBooster.HasValue?"Tap a candy • tap booster again to cancel":"Sweet boost!";
+                        else _boosterHint.text="Earn more boosters from daily treats.";
+                    },20);
+                _premiumBoosters[i] = button;
+                _premiumBoosterCounts[i] = CandyTheme.Label(tray.transform,"0",.025f+i*.194f,.04f,.199f+i*.194f,.28f,23);
+            }
+            var win = CandyTheme.Modal(root,"Sweet victory!",out _winPanel);
+            _starImages = new Image[3];
+            for(int i=0;i<3;i++) _starImages[i]=CandyTheme.SpriteImage(win,Resources.Load<Sprite>("UI/Star"),.16f+i*.23f,.51f,.38f+i*.23f,.75f);
+            _winScoreText = CandyTheme.Label(win,"0",.1f,.37f,.9f,.51f,50);
+            CandyTheme.Button(win,"NEXT ADVENTURE",.1f,.19f,.9f,.35f,CandyTheme.Pink,OnNextLevelPressed,36);
+            CandyTheme.Button(win,"BACK TO MAP",.1f,.035f,.9f,.16f,CandyTheme.Purple,OnQuitToMapPressed,30);
+            var lose = CandyTheme.Modal(root,"So close!",out _losePanel);
+            CandyTheme.Label(lose,"Every try makes you sweeter.\nGive this puzzle another go.",.08f,.52f,.92f,.74f,32);
+            _loseScoreText = CandyTheme.Label(lose,"0",.1f,.36f,.9f,.5f,48);
+            CandyTheme.Button(lose,"TRY AGAIN",.1f,.19f,.9f,.34f,CandyTheme.Pink,OnRestartPressed);
+            CandyTheme.Button(lose,"BACK TO MAP",.1f,.035f,.9f,.16f,CandyTheme.Purple,OnQuitToMapPressed,30);
+            var pause = CandyTheme.Modal(root,"Take a sweet break",out _pausePanel);
+            CandyTheme.Button(pause,"KEEP PLAYING",.1f,.56f,.9f,.70f,CandyTheme.Pink,OnResumePressed);
+            CandyTheme.Button(pause,"RESTART",.1f,.38f,.9f,.52f,CandyTheme.Purple,OnRestartPressed);
+            CandyTheme.Button(pause,"CANDY POWER GUIDE",.1f,.20f,.9f,.34f,CandyTheme.Purple,() => CandyPowerGuide.Show(root),30);
+            CandyTheme.Button(pause,"BACK TO MAP",.1f,.03f,.9f,.17f,CandyTheme.Mint,OnQuitToMapPressed);
+            HideAllPanels();
+        }
 
         // ────────────────────────────────────────────────────
         private void Awake()
@@ -58,6 +120,7 @@ namespace CandyCraze
 
         private void Start()
         {
+            BuildPremiumUI();
             if (GameManager.Instance != null)
             {
                 GameManager.Instance.OnMovesChanged.AddListener(UpdateMoves);
@@ -83,6 +146,9 @@ namespace CandyCraze
 
         private void OnDestroy()
         {
+            if (_cachedOM != null) _cachedOM.OnObjectivesUpdated.RemoveListener(UpdateObjectives);
+            var scoreManager = FindObjectOfType<ScoreManager>();
+            if (scoreManager != null) scoreManager.OnScoreChanged.RemoveListener(UpdateScore);
             if (GameManager.Instance != null)
             {
                 GameManager.Instance.OnMovesChanged.RemoveListener(UpdateMoves);
@@ -109,6 +175,8 @@ namespace CandyCraze
 
         public void OnPausePressed()
         {
+            if (GameManager.Instance == null ||
+                (GameManager.Instance.State != GameState.Playing && GameManager.Instance.State != GameState.WaitingForBoard)) return;
             GameManager.Instance?.PauseGame();
             if (_pausePanel != null) _pausePanel.SetActive(true);
             AudioManager.Instance?.PlaySFX(AudioManager.SFX.Button);
@@ -261,8 +329,8 @@ namespace CandyCraze
             if (_objectiveText != null)
             {
                 var rt = _objectiveText.rectTransform;
-                rt.anchorMin = new Vector2(0.45f, 0.06f);
-                rt.anchorMax = new Vector2(0.66f, 0.62f);
+                rt.anchorMin = new Vector2(0.24f, 0.06f);
+                rt.anchorMax = new Vector2(0.94f, 0.66f);
                 rt.offsetMin = Vector2.zero; rt.offsetMax = Vector2.zero;
                 _objectiveText.alignment = TextAnchor.MiddleLeft;
             }
@@ -278,7 +346,7 @@ namespace CandyCraze
                 {
                     if (def != null && def.GemTypeID == gemObj.Data.GemTypeID)
                     {
-                        gemSprite = def.NormalSprite;
+                        gemSprite = def.CandySprite;
                         gemColor  = def.GemColor;
                         break;
                     }
@@ -317,6 +385,15 @@ namespace CandyCraze
         // Keep HUD fresh every frame — always show current moves & tasks
         private void Update()
         {
+            for (int i = 0; i < _premiumBoosterCounts.Length; i++)
+            {
+                if (_premiumBoosterCounts[i] == null) continue;
+                var manager = BoosterManager.Instance;
+                _premiumBoosterCounts[i].text = "x" + (manager != null ? manager.GetCount((BoosterType)i) : 0);
+                if (_premiumBoosters[i] != null)
+                    _premiumBoosters[i].image.color = manager != null && manager.ActiveBooster == (BoosterType)i
+                        ? CandyTheme.Mint : i % 2 == 0 ? CandyTheme.Purple : CandyTheme.Pink;
+            }
             if (GameManager.Instance == null) return;
 
             // Live moves counter
@@ -360,6 +437,8 @@ namespace CandyCraze
                 SaveManager.Instance.Data.SetLevelComplete(lm.CurrentLevel.LevelNumber, stars, sm.CurrentScore);
                 SaveManager.Instance.Data.Coins += coins;
                 SaveManager.Instance.Save();
+                if (GoogleAuthManager.Instance != null && GoogleAuthManager.Instance.IsAuthenticated())
+                    CloudSaveManager.Instance?.UploadCurrentSave();
             }
 
             AudioManager.Instance?.PlaySFX(AudioManager.SFX.LevelWin);
@@ -439,7 +518,7 @@ namespace CandyCraze
             // Read the currently-selected level (static, always current)
             int levelNum = LevelManager.SelectedLevelNumber;
             _livesText.text = $"Lv {levelNum}";
-            _livesText.color = new Color(1f, 0.85f, 0.2f);
+            _livesText.color = CandyTheme.Pink;
         }
 
         private void HideAllPanels()

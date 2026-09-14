@@ -1,17 +1,18 @@
 # Use official Node.js runtime as base image
-FROM node:18-alpine
+FROM node:22-alpine
 
 # Set working directory in container
 WORKDIR /app
 
 # Copy package.json and package-lock.json
-COPY Backend/package*.json ./
+COPY Candycraze/Server/package*.json ./
 
 # Install dependencies
-RUN npm install
+RUN npm ci --omit=dev
 
 # Copy the rest of the application code
-COPY Backend/ ./
+COPY Candycraze/Server/app.js Candycraze/Server/google.js Candycraze/Server/profile.js Candycraze/Server/server.js ./
+USER node
 
 # Expose port 3000 (default for this server, overridable via PORT env var)
 EXPOSE 3000

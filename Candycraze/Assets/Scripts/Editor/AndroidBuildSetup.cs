@@ -21,11 +21,13 @@ namespace CandyCraze.Editor
                 BuildTargetGroup.Android, BuildTarget.Android);
 
             // ── Player Settings ───────────────────────────────
-            PlayerSettings.companyName  = "YourCompany";
+            PlayerSettings.companyName  = "gamixtv";
             PlayerSettings.productName  = "CandyCraze";
 
+            // This must match the package registered in Google Play Console and
+            // Google Play Games Services. Do not replace it with a placeholder.
             PlayerSettings.SetApplicationIdentifier(
-                BuildTargetGroup.Android, "com.yourcompany.candycraze");
+                BuildTargetGroup.Android, "com.gamixtv.Candycraze");
 
             PlayerSettings.bundleVersion     = "2.0.1";
             // NOTE: version code is auto-incremented by Build Release AAB —
@@ -51,12 +53,13 @@ namespace CandyCraze.Editor
 
             // ── Android API ──────────────────────────────────
             PlayerSettings.Android.minSdkVersion    = AndroidSdkVersions.AndroidApiLevel24; // Android 7
-            PlayerSettings.Android.targetSdkVersion = AndroidSdkVersions.AndroidApiLevel33; // Android 13
+            PlayerSettings.Android.targetSdkVersion = AndroidSdkVersions.AndroidApiLevel36; // Android 16
 
-            // ── IL2CPP + ARM64 only (iQOO and modern Android requirement) ─
+            // ── IL2CPP + ARM64 + ARMv7 for maximum device coverage ───────
             PlayerSettings.SetScriptingBackend(
                 BuildTargetGroup.Android, ScriptingImplementation.IL2CPP);
-            PlayerSettings.Android.targetArchitectures = AndroidArchitecture.ARM64;
+            PlayerSettings.Android.targetArchitectures =
+                AndroidArchitecture.ARM64 | AndroidArchitecture.ARMv7;
 
             // ── Graphics ─────────────────────────────────────
             PlayerSettings.Android.blitType = AndroidBlitType.Auto;
@@ -71,7 +74,8 @@ namespace CandyCraze.Editor
             PlayerSettings.SplashScreen.showUnityLogo = false;
 
             // ── Internet Access ──────────────────────────────
-            PlayerSettings.Android.forceInternetPermission = false;
+            // Google Play Games and cloud save require this in release builds.
+            PlayerSettings.Android.forceInternetPermission = true;
 
             // ── Build type ───────────────────────────────────
             EditorUserBuildSettings.buildAppBundle = true; // AAB for Google Play
@@ -81,17 +85,21 @@ namespace CandyCraze.Editor
             // symbolicate native (IL2CPP) crashes/ANRs.
             EditorUserBuildSettings.androidCreateSymbols = AndroidCreateSymbols.Public;
 
+            // ── Minify — disabled so no deobfuscation file is needed ─────
+            PlayerSettings.Android.minifyRelease = false;
+            PlayerSettings.Android.minifyDebug   = false;
+
             Debug.Log("[AndroidBuildSetup] ✓ Android settings configured.");
 
             EditorUtility.DisplayDialog(
                 "Android Build Ready",
                 "Android Player Settings configured!\n\n" +
-                "Package: com.yourcompany.candycraze\n" +
+                "Package: com.gamixtv.Candycraze\n" +
                 "Version: 2.0.1 (code auto-increments per build)\n" +
                 "Min SDK: Android 7 (API 24)\n" +
-                "Target SDK: Android 13 (API 33)\n" +
+                "Target SDK: API 36 (Android 16)\n" +
                 "Backend: IL2CPP\n" +
-                "Arch: ARM64 + ARMv7\n" +
+                "Arch: ARM64\n" +
                 "Output: AAB (Google Play)\n\n" +
                 "⚠ Next: Set up your Keystore in\n" +
                 "Player Settings → Publishing Settings\n\n" +
@@ -130,7 +138,14 @@ namespace CandyCraze.Editor
                 EditorUserBuildSettings.SwitchActiveBuildTarget(
                     BuildTargetGroup.Android, BuildTarget.Android);
 
+            // ── Symbols — required to suppress Play Console native code warning ─
+            EditorUserBuildSettings.androidCreateSymbols = AndroidCreateSymbols.Public;
+            // ── Minify off — no deobfuscation file needed ────────────────
+            PlayerSettings.Android.minifyRelease = false;
+            PlayerSettings.Android.minifyDebug   = false;
+
             string outputPath = "Builds/CandyCraze.aab";
+            string symbolsPath = "Builds/CandyCraze-symbols.zip";
 
             // Ensure output folder
             if (!System.IO.Directory.Exists("Builds"))
@@ -155,14 +170,20 @@ namespace CandyCraze.Editor
 
             if (summary.result == UnityEditor.Build.Reporting.BuildResult.Succeeded)
             {
+                // After a successful build, find and show the symbols zip path
+                string symbolsZip = outputPath.Replace(".aab", ".symbols.zip");
+                bool hasSymbols   = System.IO.File.Exists(symbolsZip);
+
                 EditorUtility.DisplayDialog(
                     "Build Succeeded!",
                     $"AAB built successfully!\n\n" +
                     $"Version code: {PlayerSettings.Android.bundleVersionCode}\n" +
                     $"Output: {outputPath}\n" +
                     $"Size: {summary.totalSize / 1048576:F1} MB\n\n" +
-                    "Upload this file to Google Play Console\n" +
-                    "under Internal Testing → Create Release.",
+                    (hasSymbols
+                        ? $"Symbols zip: {symbolsZip}\n\nUpload BOTH files to Play Console:\n1. {System.IO.Path.GetFileName(outputPath)}\n2. {System.IO.Path.GetFileName(symbolsZip)}"
+                        : "No symbols zip found. Run CandyCraze → Setup Android Build Settings first.") +
+                    "\n\nUpload AAB under Internal Testing → Create Release.",
                     "Done");
             }
             else

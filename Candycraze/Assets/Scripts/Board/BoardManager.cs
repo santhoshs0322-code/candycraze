@@ -224,15 +224,12 @@ namespace CandyCraze
             AudioManager.Instance?.PlaySFX(AudioManager.SFX.Swap);
 
             // Check if either gem is a special piece being activated
-            bool specialActivated = false;
             if (gemA.SpecialType != GemSpecialType.None)
             {
-                specialActivated = true;
                 yield return StartCoroutine(ActivateSpecialPiece(gemA, gemB));
             }
             else if (gemB.SpecialType != GemSpecialType.None)
             {
-                specialActivated = true;
                 yield return StartCoroutine(ActivateSpecialPiece(gemB, gemA));
             }
             else
@@ -315,7 +312,7 @@ namespace CandyCraze
             yield return new WaitForSeconds(0.25f);
 
             GameManager.Instance?.ConsumeMove();
-            yield return StartCoroutine(DestroyGemList(affected, cascadeLevel: 0));
+            yield return StartCoroutine(DestroyGemList(affected, cascadeLevel: 0, alreadyActivated: special));
         }
 
         // ── Match Resolution ─────────────────────────────────
@@ -357,8 +354,10 @@ namespace CandyCraze
             yield return StartCoroutine(DestroyGemList(toDestroy, cascadeLevel));
         }
 
-        private IEnumerator DestroyGemList(List<GemView> toDestroy, int cascadeLevel)
+        private IEnumerator DestroyGemList(List<GemView> toDestroy, int cascadeLevel, GemView alreadyActivated = null)
         {
+            if (_specialHandler != null)
+                toDestroy = _specialHandler.ExpandSpecialChain(toDestroy, _grid, Rows, Cols, alreadyActivated);
             if (toDestroy.Count == 0) { SetBusy(false); GameManager.Instance?.OnBoardResolved(); yield break; }
 
             // Score + objectives

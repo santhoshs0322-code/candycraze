@@ -57,6 +57,7 @@ namespace CandyCraze
                 return;
             }
             Instance = this;
+            transform.SetParent(null);
             DontDestroyOnLoad(gameObject);
 
             _musicSource = gameObject.AddComponent<AudioSource>();

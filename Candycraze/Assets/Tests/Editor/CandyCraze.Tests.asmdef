@@ -1,0 +1,6 @@
+{
+  "name": "CandyCraze.Tests",
+  "references": ["CandyCraze"],
+  "includePlatforms": ["Editor"],
+  "optionalUnityReferences": ["TestAssemblies"]
+}

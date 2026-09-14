@@ -72,6 +72,7 @@ namespace CandyCraze
                 case BoosterType.ExtraMoves: if (d.BoosterExtraMoves > 0) d.BoosterExtraMoves--; break;
                 case BoosterType.ColorBlast: if (d.BoosterColorBlast > 0) d.BoosterColorBlast--; break;
             }
+            d.BoostersUsed++;
             SaveManager.Instance.Save();
             OnInventoryChanged.Invoke();
         }

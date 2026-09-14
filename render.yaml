@@ -6,15 +6,16 @@ services:
     region: oregon
     branch: dev
     buildCommand: ""
-    startCommand: "node Backend/server.js"
     envVars:
       - key: NODE_ENV
         value: production
       - key: PORT
         value: "3000"
       - key: MONGODB_URI
-        scope: build
         sync: false
       - key: GOOGLE_CLIENT_ID
-        scope: build
         sync: false
+      - key: GOOGLE_CLIENT_SECRET
+        sync: false
+      - key: MONGODB_DATABASE
+        value: candycraze

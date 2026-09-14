@@ -59,7 +59,11 @@ namespace CandyCraze
             // Required ortho size to fit board height + UI within screen height
             float sizeForHeight = (boardH * 0.5f) + (topUI + bottomUI) * 0.5f;
 
-            float orthoSize = Mathf.Max(sizeForWidth, sizeForHeight);
+            // Match the premium HUD's safe-area board slot on phones and tablets.
+            Rect safe = Screen.safeArea;
+            float bottom = (safe.yMin + safe.height * .18f) / Mathf.Max(1, Screen.height);
+            float top = (safe.yMin + safe.height * .755f) / Mathf.Max(1, Screen.height);
+            float orthoSize = Mathf.Max(sizeForWidth, boardH / Mathf.Max(.1f, top - bottom) * .5f);
             _cam.orthographicSize = orthoSize;
 
             // Board centre in world space:
@@ -68,7 +72,7 @@ namespace CandyCraze
             float boardCentreY = (_boardRows - 1) * _cellSize * 0.5f;
 
             // Shift camera vertically so board sits between top HUD and bottom bar
-            float verticalShift = (topUI - bottomUI) * 0.5f;
+            float verticalShift = (.5f - (top + bottom) * .5f) * 2 * orthoSize;
 
             _cam.transform.position = new Vector3(
                 boardCentreX,

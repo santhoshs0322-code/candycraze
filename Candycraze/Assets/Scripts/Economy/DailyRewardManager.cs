@@ -42,6 +42,7 @@ namespace CandyCraze
         {
             if (Instance != null && Instance != this) { Destroy(gameObject); return; }
             Instance = this;
+            transform.SetParent(null);
             DontDestroyOnLoad(gameObject);
         }
 
@@ -99,6 +100,7 @@ namespace CandyCraze
             }
 
             data.LastDailyRewardTicks = DateTime.UtcNow.Ticks;
+            data.DailyRewardsClaimed++;
             data.DailyRewardDay       = (data.DailyRewardDay + 1) % _rewards.Length;
             SaveManager.Instance.Save();
 

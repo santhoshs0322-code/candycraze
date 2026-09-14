@@ -2,7 +2,7 @@
 // SpecialPieceHandler.cs
 // Handles activation of all special piece types:
 //   LineBlast   — clears entire row OR column
-//   AreaBomb    — clears 3×3 area around the gem
+//   AreaBomb    — clears the existing 5×5 area around the candy
 //   ColorCrystal— clears ALL gems of a target type
 //
 // Called by BoardManager after a match group is identified
@@ -58,15 +58,33 @@ namespace CandyCraze
         /// </summary>
         public static GemSpecialType DetermineSpecialType(List<GemView> matchGroup)
         {
+            if (matchGroup == null || matchGroup.Count < 3) return GemSpecialType.None;
             int count = matchGroup.Count;
 
+            // L/T/cross groups contain at least five candies too. Test shape
+            // BEFORE count, otherwise wrapped area candies are unreachable.
+            if (count >= 5 && IsLOrTShape(matchGroup)) return GemSpecialType.AreaBomb;
             if (count >= 5) return GemSpecialType.ColorCrystal;
             if (count == 4) return GemSpecialType.LineBlast;
 
-            // Check for L or T shape (count==4+ handled above, but cross/L can be 5)
-            if (IsLOrTShape(matchGroup)) return GemSpecialType.AreaBomb;
-
             return GemSpecialType.None;
+        }
+
+        /// <summary>Trigger each matched/hit power once, including powers reached by another blast.</summary>
+        public List<GemView> ExpandSpecialChain(List<GemView> seed, GemView[,] grid, int rows, int cols, GemView alreadyActivated = null)
+        {
+            var result = new List<GemView>();
+            var seen = new HashSet<GemView>();
+            foreach (var gem in seed)
+                if (gem != null && seen.Add(gem)) result.Add(gem);
+            for (int i = 0; i < result.Count; i++)
+            {
+                var gem = result[i];
+                if (gem == alreadyActivated || gem.SpecialType == GemSpecialType.None) continue;
+                foreach (var hit in GetAffectedGems(gem, grid, rows, cols))
+                    if (hit != null && seen.Add(hit)) result.Add(hit);
+            }
+            return result;
         }
 
         // ── Line Blast ───────────────────────────────────────

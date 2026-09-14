@@ -105,6 +105,8 @@ namespace CandyCraze
             }
 
             _movesRemaining = data.MoveLimit;
+            SaveManager.Instance?.Data.RecordAttempt(data.LevelNumber);
+            SaveManager.Instance?.Save();
             State = GameState.Playing;
 
             if (_scoreManager != null)     _scoreManager.Reset();
@@ -131,6 +133,7 @@ namespace CandyCraze
                 return;
 
             _movesRemaining = Mathf.Max(0, _movesRemaining - 1);
+            if (SaveManager.Instance != null) SaveManager.Instance.Data.TotalMoves++;
             OnMovesChanged.Invoke(_movesRemaining);
             Debug.Log($"[GameManager] Move used. Remaining: {_movesRemaining}");
         }
@@ -170,10 +173,12 @@ namespace CandyCraze
             OnBoardBusy.Invoke(busy);
         }
 
+        private GameState stateBeforePause;
         public void PauseGame()
         {
-            if (State == GameState.Playing)
+            if (State == GameState.Playing || State == GameState.WaitingForBoard)
             {
+                stateBeforePause = State;
                 State = GameState.Paused;
                 Time.timeScale = 0f;
             }
@@ -183,7 +188,7 @@ namespace CandyCraze
         {
             if (State == GameState.Paused)
             {
-                State = GameState.Playing;
+                State = stateBeforePause;
                 Time.timeScale = 1f;
             }
         }
@@ -198,6 +203,7 @@ namespace CandyCraze
         private void TriggerWin()
         {
             State = GameState.Won;
+            if (SaveManager.Instance != null) SaveManager.Instance.Data.LevelsWon++;
             Debug.Log("[GameManager] *** LEVEL WON ***");
             OnGameWon.Invoke();
         }
@@ -205,8 +211,18 @@ namespace CandyCraze
         private void TriggerLose()
         {
             State = GameState.Lost;
+            if (SaveManager.Instance != null) { SaveManager.Instance.Data.LevelsLost++; SaveManager.Instance.Save(); }
             Debug.Log("[GameManager] *** LEVEL LOST ***");
             OnGameLost.Invoke();
+        }
+
+        private float saveTimer;
+        private void Update()
+        {
+            if (State != GameState.Playing && State != GameState.WaitingForBoard) return;
+            if (SaveManager.Instance != null) SaveManager.Instance.Data.PlaySeconds += Time.deltaTime;
+            saveTimer += Time.deltaTime;
+            if (saveTimer >= 30) { saveTimer = 0; SaveManager.Instance?.Save(); }
         }
     }
 }

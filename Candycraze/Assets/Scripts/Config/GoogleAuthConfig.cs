@@ -7,8 +7,11 @@ using UnityEngine;
 public class GoogleAuthConfig : ScriptableObject
 {
     [Header("Google Cloud Credentials")]
-    [SerializeField] public string googleClientId = "787050963672-n0c7i29los0rshojcve4ckal097bhagd.apps.googleusercontent.com";
-    [SerializeField] public string packageName = "com.CandyCraze.Game";
+    // Keep these in sync with ProjectSettings/GooglePlayGameSettings.txt.
+    // The previous values belonged to a different Google project/package, which
+    // made a Play-installed build fail authentication after Google Play re-signed it.
+    [SerializeField] public string googleClientId = "144163133862-78cv89qoiv4stk446c606586ro04o49q.apps.googleusercontent.com";
+    [SerializeField] public string packageName = "com.gamixtv.Candycraze";
 
     [Header("Backend Configuration")]
     [SerializeField] public string backendUrl = "https://candycraze.onrender.com";

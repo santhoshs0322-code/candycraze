@@ -35,6 +35,17 @@ namespace CandyCraze
                 SaveManager.Instance.Load();
             }
 
+            if (GoogleAuthManager.Instance == null)
+            {
+                var authObject = new GameObject("GoogleAuthManager");
+                authObject.AddComponent<GoogleAuthManager>();
+            }
+            if (CloudSaveManager.Instance == null)
+            {
+                var cloudObject = new GameObject("CloudSaveManager");
+                cloudObject.AddComponent<CloudSaveManager>();
+            }
+
             // Initialise DailyRewardManager
             if (DailyRewardManager.Instance == null)
             {

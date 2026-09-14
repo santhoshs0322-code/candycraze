@@ -58,8 +58,8 @@ namespace CandyCraze
             SafeBottom = safe.yMin;
             switch (SceneTarget)
             {
-                case UISceneTarget.MainMenu: BuildMainMenu(GetOrMakeCanvas()); break;
-                case UISceneTarget.LevelMap: BuildLevelMap(GetOrMakeCanvas());  break;
+                case UISceneTarget.MainMenu: gameObject.AddComponent<PremiumHomeUI>(); break;
+                case UISceneTarget.LevelMap: break; // LevelMapController owns the premium map.
             }
         }
 
@@ -137,8 +137,44 @@ namespace CandyCraze
 
             // ── SETTINGS — pill button ───────────────────────
             SettingsButton = Btn("SetBtn", root,
-                V2(0.12f,0.18f), V2(0.88f,0.265f), Vector2.zero, Vector2.zero,
+                V2(0.12f,0.195f), V2(0.88f,0.285f), Vector2.zero, Vector2.zero,
                 "⚙ SETTINGS", W*0.05f, C_DARK, C_BG, C_WHITE);
+
+            // ── GOOGLE ACCOUNT — created entirely at runtime ──
+            var googleAuth = GoogleAuthManager.Instance;
+            if (googleAuth == null)
+            {
+                var authObject = new GameObject("GoogleAuthManager");
+                googleAuth = authObject.AddComponent<GoogleAuthManager>();
+            }
+            if (CloudSaveManager.Instance == null)
+            {
+                var cloudObject = new GameObject("CloudSaveManager");
+                cloudObject.AddComponent<CloudSaveManager>();
+            }
+
+            var googleSignInButton = Btn("GoogleSignInBtn", root,
+                V2(0.12f,0.095f), V2(0.88f,0.178f), Vector2.zero, Vector2.zero,
+                "G  SIGN IN WITH GOOGLE", W*0.042f, C_RED, C_DARK, C_WHITE);
+            var googleSignOutButton = Btn("GoogleSignOutBtn", root,
+                V2(0.12f,0.095f), V2(0.88f,0.178f), Vector2.zero, Vector2.zero,
+                "SIGN OUT", W*0.042f, C_DARK, C_RED, C_WHITE);
+            googleSignInButton.onClick.AddListener(googleAuth.SignInWithGoogle);
+            googleSignOutButton.onClick.AddListener(googleAuth.SignOut);
+
+            void RefreshGoogleAccountUI()
+            {
+                bool signedIn = googleAuth != null && googleAuth.IsAuthenticated() &&
+                                CloudSaveManager.Instance != null && CloudSaveManager.Instance.IsSignedIn;
+                googleSignInButton.gameObject.SetActive(!signedIn);
+                googleSignOutButton.gameObject.SetActive(signedIn);
+                if (signedIn && CoinsText != null && SaveManager.Instance != null)
+                    CoinsText.text = $"✦ {SaveManager.Instance.Data.Coins}";
+            }
+            googleAuth.OnLoginSuccess += RefreshGoogleAccountUI;
+            googleAuth.OnLoginFailed += RefreshGoogleAccountUI;
+            googleAuth.OnLogoutSuccess += RefreshGoogleAccountUI;
+            RefreshGoogleAccountUI();
 
             // ── SETTINGS PANEL ───────────────────────────────
             var setPanel = Pnl("SettingsPanel", root, V2(0,0), V2(1,1), V2(0,0), V2(0,0));
@@ -209,6 +245,8 @@ namespace CandyCraze
                     SaveManager.Instance.Data.BoosterShuffle += 3;
                     SaveManager.Instance.Data.BoosterColorBlast += 3;
                     SaveManager.Instance.Save();
+                    if (GoogleAuthManager.Instance != null && GoogleAuthManager.Instance.IsAuthenticated())
+                        CloudSaveManager.Instance?.UploadCurrentSave();
                     if (CoinsText != null) CoinsText.text = $"✦ {SaveManager.Instance.Data.Coins}";
                 }
             });

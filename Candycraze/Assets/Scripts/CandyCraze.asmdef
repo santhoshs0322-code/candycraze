@@ -1,7 +1,9 @@
 {
     "name": "CandyCraze",
     "rootNamespace": "CandyCraze",
-    "references": [],
+    "references": [
+        "Google.Play.Games"
+    ],
     "includePlatforms": [],
     "excludePlatforms": [],
     "allowUnsafeCode": false,
