@@ -53,7 +53,7 @@ namespace CandyCraze
                 // The generated sheet includes a neutral transparency-preview backdrop.
                 // Mask only neutral pixels connected to the sheet edges; keep enclosed
                 // white candy highlights. Cache the rendered texture for all twelve sprites.
-                var pixels = source.GetPixels32();
+                var pixels = ReadAtlasPixels(source);
                 int width = source.width, height = source.height;
                 var visited = new bool[pixels.Length];
                 var queue = new System.Collections.Generic.Queue<int>();
@@ -103,6 +103,37 @@ namespace CandyCraze
                 PowerLoaded[index] = true;
             }
             return Powers[index];
+        }
+
+        private static Color32[] ReadAtlasPixels(Texture2D source)
+        {
+            if (source.isReadable) return source.GetPixels32();
+
+            // Imported textures may have Read/Write disabled. Read a GPU copy
+            // instead of accessing the imported texture's unavailable CPU data.
+            var previous = RenderTexture.active;
+            var target = RenderTexture.GetTemporary(source.width, source.height, 0,
+                RenderTextureFormat.ARGB32, RenderTextureReadWrite.sRGB);
+            Texture2D readable = null;
+            try
+            {
+                Graphics.Blit(source, target);
+                RenderTexture.active = target;
+                readable = new Texture2D(source.width, source.height, TextureFormat.RGBA32, false);
+                readable.ReadPixels(new Rect(0, 0, source.width, source.height), 0, 0, false);
+                readable.Apply(false, false);
+                return readable.GetPixels32();
+            }
+            finally
+            {
+                RenderTexture.active = previous;
+                RenderTexture.ReleaseTemporary(target);
+                if (readable != null)
+                {
+                    if (Application.isPlaying) Object.Destroy(readable);
+                    else Object.DestroyImmediate(readable);
+                }
+            }
         }
     }
 }
