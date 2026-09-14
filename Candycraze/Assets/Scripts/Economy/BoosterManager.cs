@@ -87,7 +87,7 @@ namespace CandyCraze
             // ExtraMoves applies instantly
             if (type == BoosterType.ExtraMoves)
             {
-                ApplyExtraMoves();
+                StartCoroutine(ApplyExtraMovesRoutine());
                 return true;
             }
 
@@ -127,11 +127,13 @@ namespace CandyCraze
 
         // ── Booster Effects ──────────────────────────────────
 
-        private void ApplyExtraMoves()
+        private IEnumerator ApplyExtraMovesRoutine()
         {
             ActiveBooster=null;
             OnBoosterCancelled.Invoke();
             DeductOne(BoosterType.ExtraMoves);
+            UIManager.Instance?.ShowMoveBonus(5);
+            yield return new WaitForSeconds(.32f);
             _game.AddMoves(5);
             AudioManager.Instance?.PlaySFX(AudioManager.SFX.SpecialPiece);
         }

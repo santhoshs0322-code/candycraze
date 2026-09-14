@@ -85,7 +85,7 @@ namespace CandyCraze
             FillBoard();
             ResolveStartingMatches();
 
-            // Color bombs are earned from five-candy matches.
+            SpawnRandomColorBomb();
 
             Debug.Log($"[BoardManager] Board filled. BoardRoot has {_boardRoot.childCount} gems.");
         }
@@ -118,6 +118,13 @@ namespace CandyCraze
                 foreach(var gem in _grid) if(gem!=null && gem.GemTypeID==target.GemTypeID) affected.Add(gem);
             }
             else return false;
+            if (_blastAnimator != null)
+            {
+                GemSpecialType visual = type == BoosterType.ColorBlast ? GemSpecialType.ColorCrystal :
+                    type == BoosterType.RowBlast ? GemSpecialType.LineBlast : GemSpecialType.AreaBomb;
+                _blastAnimator.PlayBlast(visual, target.transform.position,
+                    _config?.GetGemDefinition(target.GemTypeID)?.GemColor ?? Color.white, affected);
+            }
             SetBusy(true);
             StartCoroutine(DestroyGemList(affected,0));
             return true;
@@ -196,6 +203,23 @@ namespace CandyCraze
                 }
             }
             Debug.Log($"[BoardManager] Spawned {count} starting color ball(s).");
+        }
+
+        private void SpawnRandomColorBomb()
+        {
+            // A visible random start bonus, not a fixed scripted location.
+            // It is intentionally less common on early levels.
+            float chance = _levelData != null && _levelData.LevelNumber >= 10 ? .28f : .16f;
+            if (Random.value > chance) return;
+            int tries = Rows * Cols;
+            while (tries-- > 0)
+            {
+                int row = Random.Range(0, Rows), col = Random.Range(0, Cols);
+                var gem = _grid[row, col];
+                if (gem == null || gem.SpecialType != GemSpecialType.None) continue;
+                gem.SetPower(GemSpecialType.ColorCrystal);
+                return;
+            }
         }
 
         // ── Board Fill ───────────────────────────────────────
@@ -307,16 +331,7 @@ namespace CandyCraze
             var repeats = new List<Vector3Int>();
             var affected = SpecialPieceHandler.Combination(special, swappedWith, _grid, repeats);
 
-            // ── Play blast animation BEFORE destroying ────────
-            Color blastColor = _config?.GetGemDefinition(special.GemTypeID)?.GemColor
-                               ?? Color.white;
-
-            if (_blastAnimator != null)
-                _blastAnimator.PlayBlast(special.SpecialType,
-                    special.transform.position, blastColor, affected);
-
-            // Brief pause for animation to show
-            yield return new WaitForSeconds(0.25f);
+            yield return new WaitForSeconds(0.08f);
 
             GameManager.Instance?.ConsumeMove();
             yield return StartCoroutine(DestroyGemList(affected, cascadeLevel: 0, alreadyActivated: special, alsoActivated: swappedWith, repeats: repeats));
@@ -369,6 +384,9 @@ namespace CandyCraze
                 if(candy!=alreadyActivated && candy!=alsoActivated && candy.SpecialType==GemSpecialType.AreaBomb)
                     repeats.Add(new Vector3Int(candy.Row,candy.Col,1));
             if (toDestroy.Count == 0) { SetBusy(false); GameManager.Instance?.OnBoardResolved(); yield break; }
+
+            PlayPowerAnimations(toDestroy);
+            yield return new WaitForSeconds(.18f);
 
             // Score + objectives
             foreach (var gem in toDestroy)
@@ -520,6 +538,18 @@ namespace CandyCraze
         {
             _isBusy = busy;
             GameManager.Instance?.SetBoardBusy(busy);
+        }
+
+        private void PlayPowerAnimations(List<GemView> gems)
+        {
+            if (_blastAnimator == null) return;
+            foreach (var gem in gems)
+            {
+                if (gem == null || gem.SpecialType == GemSpecialType.None) continue;
+                Color color = _config?.GetGemDefinition(gem.GemTypeID)?.GemColor ?? Color.white;
+                _blastAnimator.PlayBlast(gem.SpecialType, gem.transform.position, color, gems,
+                    gem.SpecialType == GemSpecialType.LineBlast ? gem.LineBlastVertical : (bool?)null);
+            }
         }
 
         private int CalculateScore(int gemCount, int cascadeLevel)

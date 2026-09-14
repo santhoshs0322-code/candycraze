@@ -132,7 +132,7 @@ namespace CandyCraze
 
         public void RefreshSpecialOverlay()
         {
-            if (_specialOverlay != null) { Destroy(_specialOverlay); _specialOverlay = null; }
+            if (_specialOverlay != null) { RemoveOverlay(_specialOverlay); _specialOverlay = null; }
             if (_sr == null) return;
 
             Sprite special = CandyArtwork.GetPower(SpecialType, LineBlastVertical);
@@ -154,6 +154,26 @@ namespace CandyCraze
 
             if (special == null) return;
 
+            if (SpecialType == GemSpecialType.LineBlast)
+            {
+                // Keep the original matched candy visible. The stripe overlay
+                // makes every color have its own horizontal/vertical power.
+                _sr.sprite = _def != null ? _def.CandySprite : CandyArtwork.GetNormal(GemTypeID);
+                _sr.color = Color.white;
+                BuildStripeOverlay(LineBlastVertical);
+                return;
+            }
+
+            if (SpecialType == GemSpecialType.AreaBomb)
+            {
+                // L/T matches retain their actual candy color. A gold X ribbon
+                // marks the wrapped blast without replacing it with one generic candy.
+                _sr.sprite = _def != null ? _def.CandySprite : CandyArtwork.GetNormal(GemTypeID);
+                _sr.color = Color.white;
+                BuildWrappedOverlay();
+                return;
+            }
+
             _sr.sprite = special;
             _sr.color  = Color.white;
             // A small candy badge preserves the match color under shared power artwork.
@@ -174,6 +194,48 @@ namespace CandyCraze
             // Match the special sprite's on-screen size to a normal gem so it
             // isn't oversized when its PNG has different dimensions/padding.
             FitSpriteToNormalGemSize(special);
+        }
+
+        private void BuildStripeOverlay(bool vertical)
+        {
+            if (_specialOverlay != null) RemoveOverlay(_specialOverlay);
+            _specialOverlay = new GameObject("StripeOverlay");
+            _specialOverlay.transform.SetParent(transform, false);
+            _specialOverlay.transform.localPosition = new Vector3(0, 0, -.03f);
+            for (int i = -1; i <= 1; i++)
+            {
+                var stripe = new GameObject("Stripe").AddComponent<SpriteRenderer>();
+                stripe.transform.SetParent(_specialOverlay.transform, false);
+                stripe.sprite = GetFallback();
+                stripe.color = new Color(1f, 1f, 1f, .96f);
+                stripe.sortingOrder = _sr.sortingOrder + 2;
+                stripe.transform.localPosition = vertical ? new Vector3(i * .27f, 0, 0) : new Vector3(0, i * .27f, 0);
+                stripe.transform.localScale = vertical ? new Vector3(.10f, .84f, 1f) : new Vector3(.84f, .10f, 1f);
+            }
+        }
+
+        private void BuildWrappedOverlay()
+        {
+            if (_specialOverlay != null) RemoveOverlay(_specialOverlay);
+            _specialOverlay = new GameObject("WrappedOverlay");
+            _specialOverlay.transform.SetParent(transform, false);
+            _specialOverlay.transform.localPosition = new Vector3(0, 0, -.03f);
+            for (int i = -1; i <= 1; i += 2)
+            {
+                var ribbon = new GameObject("Ribbon").AddComponent<SpriteRenderer>();
+                ribbon.transform.SetParent(_specialOverlay.transform, false);
+                ribbon.sprite = GetFallback();
+                ribbon.color = new Color(1f, .82f, .18f, .95f);
+                ribbon.sortingOrder = _sr.sortingOrder + 2;
+                ribbon.transform.localScale = new Vector3(.92f, .12f, 1f);
+                ribbon.transform.localRotation = Quaternion.Euler(0, 0, i * 45f);
+            }
+        }
+
+        private static void RemoveOverlay(GameObject overlay)
+        {
+            if (Application.isPlaying) Destroy(overlay);
+            else DestroyImmediate(overlay);
         }
 
         // Scales this gem so the special sprite renders the SAME world size as

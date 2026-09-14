@@ -181,6 +181,14 @@ namespace CandyCraze
             AudioManager.Instance?.PlaySFX(AudioManager.SFX.Combo);
         }
 
+        public void ShowMoveBonus(int amount)
+        {
+            if (_comboText == null) return;
+            if (_comboCoroutine != null) StopCoroutine(_comboCoroutine);
+            _comboText.color = CandyTheme.Gold;
+            _comboCoroutine = StartCoroutine(AnimateComboText("+" + amount + " MOVES!"));
+        }
+
         // ── Button callbacks ─────────────────────────────────
 
         public void OnPausePressed()

@@ -112,6 +112,16 @@ namespace CandyCraze
         {
             if (tapped == null) { ClearSelection(); return; }
 
+            // Hammer, blast and color boosters deliberately use a tap instead
+            // of a swap. This must happen before normal candy selection.
+            var boosters = BoosterManager.Instance;
+            if (boosters != null && boosters.ActiveBooster.HasValue)
+            {
+                boosters.OnGemTappedWithBooster(tapped);
+                ClearSelection();
+                return;
+            }
+
             if (_selected == null)
             {
                 _selected = tapped;

@@ -31,12 +31,12 @@ namespace CandyCraze
 
         /// <summary>Play the correct blast for a special gem type.</summary>
         public void PlayBlast(GemSpecialType type, Vector3 worldPos, Color gemColor,
-                              List<GemView> affectedGems = null)
+                              List<GemView> affectedGems = null, bool? lineBlastVertical = null)
         {
             switch (type)
             {
                 case GemSpecialType.LineBlast:
-                    StartCoroutine(LineBlastAnim(worldPos, gemColor, affectedGems));
+                    StartCoroutine(LineBlastAnim(worldPos, gemColor, affectedGems, lineBlastVertical));
                     break;
                 case GemSpecialType.AreaBomb:
                     StartCoroutine(AreaBombAnim(worldPos, gemColor, affectedGems));
@@ -58,14 +58,15 @@ namespace CandyCraze
         // ════════════════════════════════════════════════════
 
         IEnumerator LineBlastAnim(Vector3 origin, Color color,
-                                   List<GemView> affected)
+                                   List<GemView> affected, bool? vertical)
         {
             // 1. Flash the origin gem white
             yield return StartCoroutine(FlashAt(origin, color, 0.12f));
 
-            // 2. Spawn horizontal laser beam
-            var hBeam = SpawnBeam(origin, true, color);
-            var vBeam = SpawnBeam(origin, false, color);
+            // A striped candy fires only in the direction shown on that candy.
+            // A cross-style booster leaves this unset and fires both beams.
+            var hBeam = vertical != true ? SpawnBeam(origin, true, color) : null;
+            var vBeam = vertical != false ? SpawnBeam(origin, false, color) : null;
 
             // 3. Screen flash
             StartCoroutine(ScreenFlash(color, 0.18f));
