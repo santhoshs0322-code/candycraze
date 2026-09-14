@@ -112,6 +112,14 @@ namespace CandyCraze
         public long LastLifeLostTicks = 0;
 
         // ── Boosters ──────────────────────────────────────────────
+        public bool StarterBoostersGranted;
+        public bool GrantStarterBoosters()
+        {
+            if (StarterBoostersGranted) return false;
+            StarterBoostersGranted = true;
+            BoosterHammer++; BoosterRowBlast++; BoosterShuffle++; BoosterExtraMoves++; BoosterColorBlast++;
+            return true;
+        }
         public int BoosterHammer      = 0;
         public int BoosterRowBlast    = 0;
         public int BoosterShuffle     = 0;

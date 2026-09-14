@@ -39,6 +39,7 @@ namespace CandyCraze
             Data = new SaveData();
             Data = ReadProfile(Key, out _)?.data ?? new SaveData();
             Data.Normalise();
+            if (Data.GrantStarterBoosters()) Persist();
         }
         private LocalProfile ReadProfile(string key, out string sourceJson)
         {
@@ -119,6 +120,7 @@ namespace CandyCraze
             CloudRevision = revision;
             HasPendingSave = pending;
             Data = restored;
+            if (Data.GrantStarterBoosters()) { HasPendingSave = true; SaveGeneration++; }
             Persist();
             ApplySettings();
             OnDataChanged?.Invoke();
@@ -137,6 +139,7 @@ namespace CandyCraze
             AccountId = null; CloudRevision = 0; HasPendingSave = false;
             Data = new SaveData();
             LevelManager.SelectedLevelNumber = 1;
+            Data.GrantStarterBoosters();
             Persist();
             ApplySettings();
             OnDataChanged?.Invoke();
@@ -152,12 +155,12 @@ namespace CandyCraze
             {
                 var restored = JsonUtility.FromJson<SaveData>(json);
                 if (restored == null) return false;
-                restored.Normalise(); Data = restored; Save(); return true;
+                restored.Normalise(); restored.GrantStarterBoosters(); Data = restored; Save(); return true;
             }
             catch (Exception) { return false; }
         }
         public string SerializeData() => JsonUtility.ToJson(Data);
-        public void DeleteSave() { Data = new SaveData(); Save(); }
+        public void DeleteSave() { Data = new SaveData(); Data.GrantStarterBoosters(); Save(); }
         private void OnApplicationPause(bool paused) { if (paused) Save(); }
         private void OnApplicationQuit() { Save(); }
     }

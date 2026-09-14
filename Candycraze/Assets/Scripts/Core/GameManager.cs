@@ -126,6 +126,13 @@ namespace CandyCraze
         /// Called by SwapController after the player makes a valid swap.
         /// Decrements the move counter and checks win/lose.
         /// </summary>
+        public void AddMoves(int amount)
+        {
+            if(amount<=0 || State!=GameState.Playing) return;
+            _movesRemaining += amount;
+            OnMovesChanged.Invoke(_movesRemaining);
+        }
+
         public void ConsumeMove()
         {
             // Allow during Playing OR WaitingForBoard (swap in progress)

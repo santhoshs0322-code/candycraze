@@ -50,14 +50,18 @@ namespace CandyCraze
         /// <summary>Returns the GemDefinition for a given typeID, or null.</summary>
         public GemDefinition GetGemDefinition(int typeID)
         {
-            if (GemDefinitions == null) return null;
-            foreach (var def in GemDefinitions)
+            foreach (var def in GemDefinitions ?? System.Array.Empty<GemDefinition>())
             {
                 if (def != null && def.GemTypeID == typeID)
                     return def;
             }
+            // Use the same resource fallback as TileManager, preserving matched color.
+            if (_resourceGems == null) _resourceGems = Resources.LoadAll<GemDefinition>("Gems");
+            foreach (var def in _resourceGems)
+                if (def != null && def.GemTypeID == typeID) return def;
             return null;
         }
+        private GemDefinition[] _resourceGems;
 
         /// <summary>Returns the LevelData for a 1-based level number, or null.</summary>
         public LevelData GetLevelData(int levelNumber)

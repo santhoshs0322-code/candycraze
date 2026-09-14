@@ -49,6 +49,9 @@ namespace CandyCraze
 
         private Coroutine _comboCoroutine;
         private Text _boosterHint;
+        private RectTransform _goalContent;
+        private int _goalCount=-1;
+        private readonly System.Collections.Generic.List<Text> _goalLabels=new System.Collections.Generic.List<Text>();
         private readonly Text[] _premiumBoosterCounts = new Text[5];
         private readonly Button[] _premiumBoosters = new Button[5];
 
@@ -71,7 +74,8 @@ namespace CandyCraze
             CandyTheme.Label(moves.transform,"MOVES",.05f,.63f,.95f,.95f,23,Color.white);
             _movesText = CandyTheme.Label(moves.transform,"0",.05f,.04f,.95f,.66f,62,Color.white);
             var goals = CandyTheme.Card(root,"Goals",.07f,.774f,.93f,.86f,CandyTheme.Cream);
-            CandyTheme.Label(goals.transform,"YOUR GOAL",.04f,.66f,.96f,.96f,22);
+            CandyTheme.Label(goals.transform,"LEVEL TASKS",.04f,.73f,.96f,.98f,22);
+            _goalContent=CandyTheme.Rect(goals.transform,"TaskCards",.03f,.04f,.97f,.74f);
             _objectiveIcon = CandyTheme.SpriteImage(goals.transform,null,.06f,.10f,.21f,.65f);
             _objectiveText = CandyTheme.Label(goals.transform,"Match the candies!",.24f,.06f,.94f,.66f,30);
             _comboText = CandyTheme.Label(root,"Sweet!",.08f,.45f,.92f,.58f,85,CandyTheme.Gold);
@@ -82,15 +86,21 @@ namespace CandyCraze
             {
                 var type = (BoosterType)i;
                 var button = CandyTheme.Button(tray.transform,names[i],.025f+i*.194f,.29f,.199f+i*.194f,.72f,
-                    i%2==0?CandyTheme.Purple:CandyTheme.Pink,() => {
+                    CandyTheme.Hex("F5DFEF"),() => {
                         var manager = BoosterManager.Instance;
                         if (manager == null) return;
                         if (manager.ActiveBooster == type) { manager.Cancel(); _boosterHint.text="Booster cancelled"; }
                         else if (manager.TryActivate(type)) _boosterHint.text=manager.ActiveBooster.HasValue?"Tap a candy • tap booster again to cancel":"Sweet boost!";
                         else _boosterHint.text="Earn more boosters from daily treats.";
                     },20);
+                var caption=button.GetComponentInChildren<Text>();
+                caption.gameObject.SetActive(false);
+                string[] icons={"Booster_Hammer","Booster_Blast","Booster_Shuffle","Booster_Moves","Booster_Color"};
+                CandyTheme.SpriteImage(button.transform,Resources.Load<Sprite>("CandySprites/"+icons[i]),.04f,.04f,.96f,.96f);
+                var badge=CandyTheme.Card(button.transform,"Stock",.65f,-.1f,1.06f,.26f,CandyTheme.Purple,false);
                 _premiumBoosters[i] = button;
-                _premiumBoosterCounts[i] = CandyTheme.Label(tray.transform,"0",.025f+i*.194f,.04f,.199f+i*.194f,.28f,23);
+                _premiumBoosterCounts[i] = CandyTheme.Label(badge.transform,"0",0,0,1,1,23,Color.white);
+                CandyTheme.Label(tray.transform,names[i],.025f+i*.194f,.01f,.199f+i*.194f,.22f,18);
             }
             var win = CandyTheme.Modal(root,"Sweet victory!",out _winPanel);
             _starImages = new Image[3];
@@ -249,6 +259,35 @@ namespace CandyCraze
                 // No objectives loaded yet — keep a friendly placeholder
                 _objectiveText.text = "Match the gems!";
                 if (_objectiveIcon != null) _objectiveIcon.enabled = false;
+                return;
+            }
+
+            if(_goalContent!=null)
+            {
+                _objectiveText.gameObject.SetActive(false);
+                _objectiveIcon.gameObject.SetActive(false);
+                if(_goalCount!=objectives.Count)
+                {
+                    foreach(Transform child in _goalContent) Destroy(child.gameObject);
+                    _goalLabels.Clear(); _goalCount=objectives.Count;
+                    for(int i=0;i<objectives.Count;i++)
+                    {
+                        var data=objectives[i].Data;
+                        var card=CandyTheme.Rect(_goalContent,"Task"+i,(float)i/objectives.Count,0,(float)(i+1)/objectives.Count,1);
+                        Sprite icon=data.Type==ObjectiveType.CollectGemType?CandyArtwork.GetNormal(data.GemTypeID):
+                            Resources.Load<Sprite>(data.Type==ObjectiveType.ReachScore?"UI/Star":"CandySprites/Booster_Blast");
+                        CandyTheme.SpriteImage(card,icon,.02f,.10f,.31f,.92f);
+                        _goalLabels.Add(CandyTheme.Label(card,"",.32f,.03f,.98f,.97f,29));
+                    }
+                }
+                for(int i=0;i<objectives.Count;i++)
+                {
+                    var obj=objectives[i];
+                    int left=Mathf.Max(0,obj.Target-obj.Current);
+                    _goalLabels[i].text=obj.IsComplete?"DONE!":obj.Data.Type==ObjectiveType.ReachScore?$"{left:N0} points left":
+                        obj.Data.Type==ObjectiveType.ClearObstacles?$"{left} blockers left":$"{left} to collect";
+                    _goalLabels[i].color=obj.IsComplete?CandyTheme.Mint:CandyTheme.Ink;
+                }
                 return;
             }
 

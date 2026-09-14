@@ -19,7 +19,7 @@ export function validateSave(json) {
   if (!input || Array.isArray(input) || typeof input !== 'object') throw Object.assign(new Error('Invalid save.'), { status: 400 });
   const save = defaultSave();
   for (const key of counters) if (input[key] !== undefined) save[key] = integer(input[key]);
-  for (const key of ['SoundOn', 'MusicOn']) if (input[key] !== undefined) {
+  for (const key of ['SoundOn', 'MusicOn', 'StarterBoostersGranted']) if (input[key] !== undefined) {
     if (typeof input[key] !== 'boolean') throw Object.assign(new Error('Invalid preference.'), { status: 400 });
     save[key] = input[key];
   }

@@ -136,6 +136,79 @@ public static class CandyVerification
             {
                 Check(SceneManager.GetActiveScene().name=="LevelMap","Victory returns to map");
                 Capture("completed-map");
+                Click("1");
+            }
+            if(stage>=7)
+            {
+                var board=Object.FindObjectOfType<BoardManager>();
+                if(board==null || board.IsBusy)
+                {
+                    int retries=SessionState.GetInt("CandyBusyRetries",0)+1;
+                    SessionState.SetInt("CandyBusyRetries",retries);
+                    if(retries>40) throw new Exception("Board did not settle after booster/combo");
+                    return;
+                }
+                SessionState.SetInt("CandyBusyRetries",0);
+                var boosters=BoosterManager.Instance;
+                var game=GameManager.Instance;
+                if(stage==7)
+                {
+                    var goals=Object.Instantiate(Object.FindObjectOfType<LevelManager>().CurrentLevel);
+                    goals.Objectives=new[]{new ObjectiveData {Type=ObjectiveType.ReachScore,TargetScore=1000000}};
+                    Object.FindObjectOfType<ObjectiveManager>().Initialise(goals);
+                    Check(Enumerable.Range(0,5).All(i=>boosters.GetCount((BoosterType)i)==1),"Starter pack supplies 1x each booster");
+                    SessionState.SetInt("QAFreeMoves",game.MovesRemaining);
+                    Check(boosters.TryActivate(BoosterType.Hammer),"Hammer can be selected");
+                    boosters.OnGemTappedWithBooster(board.GetGem(3,3));
+                }
+                if(stage>=8 && stage<=12)
+                {
+                    Check(Object.FindObjectsOfType<GemView>().Length==64,"Booster leaves a full board, stage "+stage);
+                    Check(game.MovesRemaining==SessionState.GetInt("QAFreeMoves",0)+(stage>=11?5:0),"Booster does not consume a move, stage "+stage);
+                }
+                if(stage==8)
+                {
+                    Check(boosters.GetCount(BoosterType.Hammer)==0,"Hammer deducts one use");
+                    Check(boosters.TryActivate(BoosterType.RowBlast),"Blast can be selected");
+                    boosters.OnGemTappedWithBooster(board.GetGem(3,3));
+                }
+                if(stage==9)
+                {
+                    Check(boosters.GetCount(BoosterType.RowBlast)==0,"Blast deducts one use");
+                    board.GetGem(3,3).SetPower(GemSpecialType.ColorCrystal);
+                    Check(boosters.TryActivate(BoosterType.Shuffle),"Shuffle can be used");
+                }
+                if(stage==10)
+                {
+                    Check(boosters.GetCount(BoosterType.Shuffle)==0,"Shuffle deducts one use");
+                    Check(Object.FindObjectsOfType<GemView>().Any(g=>g.SpecialType==GemSpecialType.ColorCrystal),"Shuffle preserves power candies");
+                    Check(boosters.TryActivate(BoosterType.ExtraMoves),"Five extra moves can be used");
+                }
+                if(stage==11)
+                {
+                    Check(boosters.GetCount(BoosterType.ExtraMoves)==0,"Extra moves deducts one use");
+                    Check(boosters.TryActivate(BoosterType.ColorBlast),"Color booster can be selected");
+                    boosters.OnGemTappedWithBooster(board.GetGem(3,3));
+                }
+                if(stage==12)
+                {
+                    Check(boosters.GetCount(BoosterType.ColorBlast)==0,"Color booster deducts one use");
+                    var config=Resources.Load<GameConfig>("GameConfig");
+                    for(int r=0;r<8;r++) for(int c=0;c<8;c++) board.GetGem(r,c).Initialise(config.GetGemDefinition((r+c*2)%6),r,c);
+                    board.GetGem(3,3).SetPower(GemSpecialType.LineBlast);
+                    board.GetGem(3,4).SetPower(GemSpecialType.LineBlast);
+                    SessionState.SetInt("QAComboMoves",game.MovesRemaining);
+                    Check(board.TrySwap(3,3,3,4),"Two stripes combine by swapping");
+                }
+                if(stage==13)
+                {
+                    Check(game.MovesRemaining==SessionState.GetInt("QAComboMoves",0)-1,"Combo consumes exactly one move");
+                    Check(Object.FindObjectsOfType<GemView>().Length==64,"Combo refills board completely");
+                    Capture("combo-board");
+                }
+            }
+            if(stage==13)
+            {
                 SessionState.SetBool("CandyVerifyActive",false);
                 EditorApplication.Exit(File.Exists(Path.Combine(Output,"runtime-errors.txt"))?2:0);
                 return;

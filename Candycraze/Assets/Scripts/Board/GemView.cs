@@ -123,6 +123,13 @@ namespace CandyCraze
         /// special piece: ↔ / ↕ for line bombs, ✦ (rainbow) for a color bomb.
         /// Call again after LineBlastVertical is set so the arrow points right.
         /// </summary>
+        public void SetPower(GemSpecialType type, bool vertical=false)
+        {
+            SpecialType=type;
+            LineBlastVertical=vertical;
+            RefreshSpecialOverlay();
+        }
+
         public void RefreshSpecialOverlay()
         {
             if (_specialOverlay != null) { Destroy(_specialOverlay); _specialOverlay = null; }
@@ -149,6 +156,19 @@ namespace CandyCraze
 
             _sr.sprite = special;
             _sr.color  = Color.white;
+            // A small candy badge preserves the match color under shared power artwork.
+            var badge=transform.Find("MatchColor");
+            if(SpecialType==GemSpecialType.LineBlast || SpecialType==GemSpecialType.AreaBomb)
+            {
+                if(badge==null) { badge=new GameObject("MatchColor").transform; badge.SetParent(transform,false); badge.gameObject.AddComponent<SpriteRenderer>(); }
+                badge.localPosition=new Vector3(.28f,-.28f,-.02f);
+                badge.localScale=Vector3.one*.4f;
+                var colorRenderer=badge.GetComponent<SpriteRenderer>();
+                colorRenderer.sprite=CandyArtwork.GetNormal(GemTypeID);
+                colorRenderer.sortingOrder=_sr.sortingOrder+2;
+                badge.gameObject.SetActive(true);
+            }
+            else if(badge!=null) badge.gameObject.SetActive(false);
             if (_glowSr != null) _glowSr.sprite = special;
             if (_highlightSr != null) _highlightSr.sprite = special;
             // Match the special sprite's on-screen size to a normal gem so it

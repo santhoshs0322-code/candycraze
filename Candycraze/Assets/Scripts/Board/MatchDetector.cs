@@ -77,13 +77,13 @@ namespace CandyCraze
         {
             List<GemView> run = new List<GemView>();
             GemView first = grid[row, startCol];
-            if (first == null || first.IsMatched) return run;
+            if (first == null || first.IsMatched || first.SpecialType == GemSpecialType.ColorCrystal) return run;
 
             run.Add(first);
             for (int c = startCol + 1; c < cols; c++)
             {
                 GemView gem = grid[row, c];
-                if (gem == null || gem.GemTypeID != first.GemTypeID) break;
+                if (gem == null || gem.IsMatched || gem.SpecialType == GemSpecialType.ColorCrystal || gem.GemTypeID != first.GemTypeID) break;
                 run.Add(gem);
             }
             return run;
@@ -93,13 +93,13 @@ namespace CandyCraze
         {
             List<GemView> run = new List<GemView>();
             GemView first = grid[startRow, col];
-            if (first == null || first.IsMatched) return run;
+            if (first == null || first.IsMatched || first.SpecialType == GemSpecialType.ColorCrystal) return run;
 
             run.Add(first);
             for (int r = startRow + 1; r < rows; r++)
             {
                 GemView gem = grid[r, col];
-                if (gem == null || gem.GemTypeID != first.GemTypeID) break;
+                if (gem == null || gem.IsMatched || gem.SpecialType == GemSpecialType.ColorCrystal || gem.GemTypeID != first.GemTypeID) break;
                 run.Add(gem);
             }
             return run;

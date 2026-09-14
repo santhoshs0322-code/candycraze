@@ -81,7 +81,7 @@ namespace CandyCraze
 
         public bool TryActivate(BoosterType type)
         {
-            if (_game == null || _game.State != GameState.Playing) return false;
+            if (_game == null || _game.State != GameState.Playing || _board == null || _board.IsBusy) return false;
             if (GetCount(type) <= 0) { Debug.Log($"[Booster] No {type} in inventory."); return false; }
 
             // ExtraMoves applies instantly
@@ -117,21 +117,9 @@ namespace CandyCraze
             if (ActiveBooster == null || gem == null) return;
 
             BoosterType type = ActiveBooster.Value;
+            if (!_board.ApplyBooster(type, gem)) return;
             ActiveBooster = null;
             DeductOne(type);
-
-            switch (type)
-            {
-                case BoosterType.Hammer:
-                    StartCoroutine(ApplyHammer(gem));
-                    break;
-                case BoosterType.RowBlast:
-                    StartCoroutine(ApplyRowBlast(gem));
-                    break;
-                case BoosterType.ColorBlast:
-                    StartCoroutine(ApplyColorBlast(gem));
-                    break;
-            }
 
             OnBoosterCancelled.Invoke();
             AudioManager.Instance?.PlaySFX(AudioManager.SFX.SpecialPiece);
@@ -139,134 +127,21 @@ namespace CandyCraze
 
         // ── Booster Effects ──────────────────────────────────
 
-        private IEnumerator ApplyHammer(GemView gem)
-        {
-            _game.SetBoardBusy(true);
-            yield return new WaitForSeconds(0.1f);
-
-            int row = gem.Row, col = gem.Col;
-            if (_board.GetGem(row, col) != null)
-            {
-                var toDestroy = new System.Collections.Generic.List<GemView> { gem };
-                // Use reflection-like pattern — call BoardManager destroy pathway
-                // For now: direct destroy and notify
-                FindObjectOfType<ScoreManager>()?.AddScore(Constants.SCORE_PER_GEM * 2);
-                FindObjectOfType<ObjectiveManager>()?.OnGemMatched(gem.GemTypeID);
-                gem.PlayDestroyAnimation(null);
-                // Let BoardManager handle gravity via its own cascade check
-            }
-            yield return new WaitForSeconds(0.5f);
-            _game.SetBoardBusy(false);
-        }
-
-        private IEnumerator ApplyRowBlast(GemView gem)
-        {
-            _game.SetBoardBusy(true);
-            var sp = FindObjectOfType<SpecialPieceHandler>();
-            if (sp != null && _board != null)
-            {
-                // Create a temporary LineBlast gem effect
-                var affected = sp.GetAffectedGems(
-                    CreateTempSpecial(gem, GemSpecialType.LineBlast),
-                    GetGrid(), _board.Rows, _board.Cols);
-                // Score and destroy
-                foreach (var g in affected)
-                {
-                    FindObjectOfType<ObjectiveManager>()?.OnGemMatched(g.GemTypeID);
-                    g.PlayDestroyAnimation(null);
-                }
-                FindObjectOfType<ScoreManager>()?.AddScore(affected.Count * Constants.SCORE_PER_GEM);
-            }
-            yield return new WaitForSeconds(0.6f);
-            _game.SetBoardBusy(false);
-        }
-
-        private IEnumerator ApplyColorBlast(GemView gem)
-        {
-            _game.SetBoardBusy(true);
-            if (_board != null)
-            {
-                int targetType = gem.GemTypeID;
-                var grid = GetGrid();
-                if (grid != null)
-                {
-                    for (int r = 0; r < _board.Rows; r++)
-                    for (int c = 0; c < _board.Cols; c++)
-                    {
-                        var g = grid[r, c];
-                        if (g != null && g.GemTypeID == targetType)
-                        {
-                            FindObjectOfType<ObjectiveManager>()?.OnGemMatched(g.GemTypeID);
-                            FindObjectOfType<ScoreManager>()?.AddScore(Constants.SCORE_PER_GEM);
-                            g.PlayDestroyAnimation(null);
-                        }
-                    }
-                }
-            }
-            yield return new WaitForSeconds(0.6f);
-            _game.SetBoardBusy(false);
-        }
-
         private void ApplyExtraMoves()
         {
+            ActiveBooster=null;
+            OnBoosterCancelled.Invoke();
             DeductOne(BoosterType.ExtraMoves);
-            // Fire moves event via GameManager
-            if (_game != null)
-            {
-                // Add 5 moves — access via reflection workaround
-                var field = typeof(GameManager).GetField("_movesRemaining",
-                    System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
-                if (field != null)
-                {
-                    int current = (int)field.GetValue(_game);
-                    field.SetValue(_game, current + 5);
-                    _game.OnMovesChanged.Invoke(current + 5);
-                    Debug.Log($"[Booster] Extra moves! Now: {current + 5}");
-                }
-            }
+            _game.AddMoves(5);
             AudioManager.Instance?.PlaySFX(AudioManager.SFX.SpecialPiece);
         }
 
         private void ApplyShuffle()
         {
-            DeductOne(BoosterType.Shuffle);
-            // Re-initialise board with same level (shuffles gems)
-            var lm = FindObjectOfType<LevelManager>();
-            var bm = FindObjectOfType<BoardManager>();
-            if (lm != null && bm != null)
-                bm.Initialise(lm.CurrentLevel);
+            ActiveBooster=null;
+            if(_board.ShuffleCandies()) DeductOne(BoosterType.Shuffle);
+            OnBoosterCancelled.Invoke();
             AudioManager.Instance?.PlaySFX(AudioManager.SFX.SpecialPiece);
-            Debug.Log("[Booster] Board shuffled.");
-        }
-
-        // ── Helpers ──────────────────────────────────────────
-
-        private GemView[,] GetGrid()
-        {
-            if (_board == null) return null;
-            // Access grid via public method pattern
-            var grid = new GemView[_board.Rows, _board.Cols];
-            for (int r = 0; r < _board.Rows; r++)
-            for (int c = 0; c < _board.Cols; c++)
-                grid[r, c] = _board.GetGem(r, c);
-            return grid;
-        }
-
-        private GemView CreateTempSpecial(GemView source, GemSpecialType type)
-        {
-            // Create a wrapper with the special type set
-            var go  = new GameObject("TempSpecial");
-            var gv  = go.AddComponent<GemView>();
-            // Manually set fields via reflection
-            var rowF = typeof(GemView).GetProperty("Row");
-            var colF = typeof(GemView).GetProperty("Col");
-            var stF  = typeof(GemView).GetProperty("SpecialType");
-            rowF?.SetValue(gv, source.Row);
-            colF?.SetValue(gv, source.Col);
-            stF?.SetValue(gv, type);
-            // Clean up after one frame
-            Destroy(go, 0.1f);
-            return gv;
         }
     }
 }

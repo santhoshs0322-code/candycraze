@@ -85,15 +85,14 @@ namespace CandyCraze
             FillBoard();
             ResolveStartingMatches();
 
-            // Spawn 1-2 random Color Balls at start (based on level difficulty)
-            SpawnStartingColorBalls();
+            // Color bombs are earned from five-candy matches.
 
             Debug.Log($"[BoardManager] Board filled. BoardRoot has {_boardRoot.childCount} gems.");
         }
 
         public bool TrySwap(int rowA, int colA, int rowB, int colB)
         {
-            if (_isBusy) return false;
+            if (_isBusy || Mathf.Abs(rowA-rowB)+Mathf.Abs(colA-colB)!=1) return false;
             if (!IsInBounds(rowA, colA) || !IsInBounds(rowB, colB)) return false;
 
             GemView gemA = _grid[rowA, colA];
@@ -104,6 +103,50 @@ namespace CandyCraze
 
             StartCoroutine(SwapRoutine(gemA, gemB));
             return true;
+        }
+
+        public bool IsBusy => _isBusy;
+
+        public bool ApplyBooster(BoosterType type, GemView target)
+        {
+            if(_isBusy || target==null || GetGem(target.Row,target.Col)!=target) return false;
+            var affected=new List<GemView>();
+            if(type==BoosterType.Hammer) affected.Add(target);
+            else if(type==BoosterType.RowBlast) affected=SpecialPieceHandler.Cross(_grid,target.Row,target.Col);
+            else if(type==BoosterType.ColorBlast)
+            {
+                foreach(var gem in _grid) if(gem!=null && gem.GemTypeID==target.GemTypeID) affected.Add(gem);
+            }
+            else return false;
+            SetBusy(true);
+            StartCoroutine(DestroyGemList(affected,0));
+            return true;
+        }
+
+        public bool ShuffleCandies()
+        {
+            if(_isBusy) return false;
+            SetBusy(true);
+            var candies=new List<GemView>();
+            var cells=new List<Vector2Int>();
+            foreach(var gem in _grid) if(gem!=null) { candies.Add(gem); cells.Add(new Vector2Int(gem.Row,gem.Col)); }
+            for(int attempt=0;attempt<100;attempt++)
+            {
+                for(int i=candies.Count-1;i>0;i--) { int j=Random.Range(0,i+1); var old=candies[i]; candies[i]=candies[j]; candies[j]=old; }
+                for(int i=0;i<candies.Count;i++)
+                { var cell=cells[i]; var gem=candies[i]; _grid[cell.x,cell.y]=gem; gem.Row=cell.x; gem.Col=cell.y; gem.SnapTo(CellToWorld(cell.x,cell.y)); }
+                if(_matchDetector.FindAllMatches(_grid,Rows,Cols).Count==0) break;
+            }
+            StartCoroutine(ResolveAfterShuffle());
+            return true;
+        }
+
+        private IEnumerator ResolveAfterShuffle()
+        {
+            yield return new WaitForSeconds(.25f);
+            var matches=_matchDetector.FindAllMatches(_grid,Rows,Cols);
+            if(matches.Count>0) yield return StartCoroutine(ResolveMatches(matches,0));
+            else { SetBusy(false); GameManager.Instance?.OnBoardResolved(); }
         }
 
         public GemView GetGem(int row, int col)
@@ -224,13 +267,9 @@ namespace CandyCraze
             AudioManager.Instance?.PlaySFX(AudioManager.SFX.Swap);
 
             // Check if either gem is a special piece being activated
-            if (gemA.SpecialType != GemSpecialType.None)
+            if (SpecialPieceHandler.CanCombine(gemA, gemB))
             {
                 yield return StartCoroutine(ActivateSpecialPiece(gemA, gemB));
-            }
-            else if (gemB.SpecialType != GemSpecialType.None)
-            {
-                yield return StartCoroutine(ActivateSpecialPiece(gemB, gemA));
             }
             else
             {
@@ -253,7 +292,7 @@ namespace CandyCraze
 
                 // ResolveMatches now handles special creation internally
                 GameManager.Instance?.ConsumeMove();
-                yield return StartCoroutine(ResolveMatches(matches, cascadeLevel: 0));
+                yield return StartCoroutine(ResolveMatches(matches, cascadeLevel: 0, moved: gemA, other: gemB));
             }
         }
 
@@ -265,40 +304,8 @@ namespace CandyCraze
 
             AudioManager.Instance?.PlaySFX(AudioManager.SFX.SpecialPiece);
 
-            List<GemView> affected = new List<GemView>();
-
-            bool isColorBall  = special.SpecialType == GemSpecialType.ColorCrystal;
-            bool otherIsBall  = swappedWith != null &&
-                                swappedWith.SpecialType == GemSpecialType.ColorCrystal;
-
-            if (isColorBall && otherIsBall)
-            {
-                // ── Color Ball + Color Ball → CLEAR ENTIRE BOARD ──
-                for (int r = 0; r < Rows; r++)
-                for (int c = 0; c < Cols; c++)
-                    if (_grid[r, c] != null)
-                        affected.Add(_grid[r, c]);
-
-                ScreenShake.Instance?.ShakeHeavy();
-                HapticFeedback.Heavy();
-            }
-            else if (isColorBall && swappedWith != null)
-            {
-                // ── Color Ball + normal gem → remove all of that colour ──
-                int targetType = swappedWith.GemTypeID;
-                for (int r = 0; r < Rows; r++)
-                for (int c = 0; c < Cols; c++)
-                    if (_grid[r, c] != null && _grid[r, c].GemTypeID == targetType)
-                        affected.Add(_grid[r, c]);
-
-                // Also destroy the color ball itself
-                if (!affected.Contains(special)) affected.Add(special);
-            }
-            else
-            {
-                // Line Blast / Area Bomb
-                affected = _specialHandler.GetAffectedGems(special, _grid, Rows, Cols);
-            }
+            var repeats = new List<Vector3Int>();
+            var affected = SpecialPieceHandler.Combination(special, swappedWith, _grid, repeats);
 
             // ── Play blast animation BEFORE destroying ────────
             Color blastColor = _config?.GetGemDefinition(special.GemTypeID)?.GemColor
@@ -312,7 +319,7 @@ namespace CandyCraze
             yield return new WaitForSeconds(0.25f);
 
             GameManager.Instance?.ConsumeMove();
-            yield return StartCoroutine(DestroyGemList(affected, cascadeLevel: 0, alreadyActivated: special));
+            yield return StartCoroutine(DestroyGemList(affected, cascadeLevel: 0, alreadyActivated: special, alsoActivated: swappedWith, repeats: repeats));
         }
 
         // ── Match Resolution ─────────────────────────────────
@@ -321,7 +328,7 @@ namespace CandyCraze
         private struct PendingSpecial { public int row, col, typeID; public GemSpecialType type; public bool vertical; }
         private List<PendingSpecial> _pendingSpecials = new List<PendingSpecial>();
 
-        private IEnumerator ResolveMatches(List<List<GemView>> matches, int cascadeLevel)
+        private IEnumerator ResolveMatches(List<List<GemView>> matches, int cascadeLevel, GemView moved=null, GemView other=null)
         {
             _pendingSpecials.Clear();
 
@@ -332,11 +339,10 @@ namespace CandyCraze
                 Debug.Log($"[BoardManager] Match group size={group.Count} → special={special}");
                 if (special == GemSpecialType.None) continue;
 
-                GemView centre = group[group.Count / 2];
-                // For a 4-in-a-row LineBlast, remember the orientation so the
-                // bomb clears the matching direction (vertical vs horizontal).
+                GemView centre = SpecialPieceHandler.ChooseSpawn(group, moved, other);
+                // Stripe blast runs perpendicular to the four-candy match.
                 bool vertical = special == GemSpecialType.LineBlast
-                                && SpecialPieceHandler.IsVerticalMatch(group);
+                                && !SpecialPieceHandler.IsVerticalMatch(group);
                 _pendingSpecials.Add(new PendingSpecial {
                     row = centre.Row, col = centre.Col,
                     typeID = centre.GemTypeID, type = special, vertical = vertical
@@ -354,10 +360,14 @@ namespace CandyCraze
             yield return StartCoroutine(DestroyGemList(toDestroy, cascadeLevel));
         }
 
-        private IEnumerator DestroyGemList(List<GemView> toDestroy, int cascadeLevel, GemView alreadyActivated = null)
+        private IEnumerator DestroyGemList(List<GemView> toDestroy, int cascadeLevel, GemView alreadyActivated = null, GemView alsoActivated = null, List<Vector3Int> repeats = null)
         {
             if (_specialHandler != null)
-                toDestroy = _specialHandler.ExpandSpecialChain(toDestroy, _grid, Rows, Cols, alreadyActivated);
+                toDestroy = _specialHandler.ExpandSpecialChain(toDestroy, _grid, Rows, Cols, alreadyActivated, alsoActivated);
+            if(repeats==null) repeats=new List<Vector3Int>();
+            foreach(var candy in toDestroy)
+                if(candy!=alreadyActivated && candy!=alsoActivated && candy.SpecialType==GemSpecialType.AreaBomb)
+                    repeats.Add(new Vector3Int(candy.Row,candy.Col,1));
             if (toDestroy.Count == 0) { SetBusy(false); GameManager.Instance?.OnBoardResolved(); yield break; }
 
             // Score + objectives
@@ -445,6 +455,15 @@ namespace CandyCraze
             // Gravity + refill
             yield return StartCoroutine(_gravityController.ApplyGravity(_grid, Rows, Cols, this));
             yield return StartCoroutine(RefillBoard());
+
+            // Wrapped candies detonate again after the first refill.
+            if(repeats.Count>0)
+            {
+                var secondWave=new List<GemView>();
+                foreach(var pulse in repeats) secondWave.AddRange(SpecialPieceHandler.Area(_grid,pulse.x,pulse.y,pulse.z));
+                yield return StartCoroutine(DestroyGemList(secondWave,cascadeLevel));
+                yield break;
+            }
 
             // Cascade check
             yield return new WaitForSeconds(_config?.CascadeCheckDelay ?? Constants.CASCADE_CHECK_DELAY);
