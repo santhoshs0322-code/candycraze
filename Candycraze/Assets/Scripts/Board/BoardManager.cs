@@ -386,7 +386,8 @@ namespace CandyCraze
             if (toDestroy.Count == 0) { SetBusy(false); GameManager.Instance?.OnBoardResolved(); yield break; }
 
             PlayPowerAnimations(toDestroy);
-            yield return new WaitForSeconds(.18f);
+            if (toDestroy.Exists(g => g != null && g.SpecialType != GemSpecialType.None))
+                yield return new WaitForSeconds(.65f);
 
             // Score + objectives
             foreach (var gem in toDestroy)
@@ -548,7 +549,7 @@ namespace CandyCraze
                 if (gem == null || gem.SpecialType == GemSpecialType.None) continue;
                 Color color = _config?.GetGemDefinition(gem.GemTypeID)?.GemColor ?? Color.white;
                 _blastAnimator.PlayBlast(gem.SpecialType, gem.transform.position, color, gems,
-                    gem.SpecialType == GemSpecialType.LineBlast ? gem.LineBlastVertical : (bool?)null);
+                    gem.SpecialType == GemSpecialType.LineBlast ? gem.LineBlastVertical : (bool?)null, gem);
             }
         }
 

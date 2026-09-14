@@ -156,11 +156,11 @@ namespace CandyCraze
 
             if (SpecialType == GemSpecialType.LineBlast)
             {
-                // Keep the original matched candy visible. The stripe overlay
-                // makes every color have its own horizontal/vertical power.
-                _sr.sprite = _def != null ? _def.CandySprite : CandyArtwork.GetNormal(GemTypeID);
+                _sr.sprite = CandyArtwork.GetStripe(GemTypeID, LineBlastVertical);
                 _sr.color = Color.white;
-                BuildStripeOverlay(LineBlastVertical);
+                if (_glowSr != null) _glowSr.sprite = _sr.sprite;
+                if (_highlightSr != null) _highlightSr.sprite = _sr.sprite;
+                FitSpriteToNormalGemSize(_sr.sprite);
                 return;
             }
 
@@ -194,24 +194,6 @@ namespace CandyCraze
             // Match the special sprite's on-screen size to a normal gem so it
             // isn't oversized when its PNG has different dimensions/padding.
             FitSpriteToNormalGemSize(special);
-        }
-
-        private void BuildStripeOverlay(bool vertical)
-        {
-            if (_specialOverlay != null) RemoveOverlay(_specialOverlay);
-            _specialOverlay = new GameObject("StripeOverlay");
-            _specialOverlay.transform.SetParent(transform, false);
-            _specialOverlay.transform.localPosition = new Vector3(0, 0, -.03f);
-            for (int i = -1; i <= 1; i++)
-            {
-                var stripe = new GameObject("Stripe").AddComponent<SpriteRenderer>();
-                stripe.transform.SetParent(_specialOverlay.transform, false);
-                stripe.sprite = GetFallback();
-                stripe.color = new Color(1f, 1f, 1f, .96f);
-                stripe.sortingOrder = _sr.sortingOrder + 2;
-                stripe.transform.localPosition = vertical ? new Vector3(i * .27f, 0, 0) : new Vector3(0, i * .27f, 0);
-                stripe.transform.localScale = vertical ? new Vector3(.10f, .84f, 1f) : new Vector3(.84f, .10f, 1f);
-            }
         }
 
         private void BuildWrappedOverlay()

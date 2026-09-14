@@ -9,6 +9,21 @@ namespace CandyCraze
             { "Candy_Red", "Candy_Blue", "Candy_Green", "Candy_Purple", "Candy_Yellow", "Candy_Orange" };
         private static readonly Sprite[] Normal = new Sprite[6];
         private static readonly Sprite[] Powers = new Sprite[4];
+        private static readonly Sprite[] Stripes = new Sprite[12];
+        private static Texture2D stripeAtlas;
+        public static Sprite GetStripe(int color, bool vertical)
+        {
+            if (color < 0 || color >= 6) return null;
+            int index = color + (vertical ? 6 : 0);
+            if (Stripes[index] != null) return Stripes[index];
+            if (stripeAtlas == null) stripeAtlas = Resources.Load<Texture2D>("CandySprites/StripedCandyAtlas");
+            if (stripeAtlas == null) return GetPower(GemSpecialType.LineBlast, vertical);
+            float width = stripeAtlas.width / 6f, height = stripeAtlas.height / 2f;
+            Stripes[index] = Sprite.Create(stripeAtlas,
+                new Rect(color * width, vertical ? 0 : height, width, height),
+                new Vector2(.5f, .5f), width, 0, SpriteMeshType.FullRect);
+            return Stripes[index];
+        }
         private static readonly bool[] NormalLoaded = new bool[6], PowerLoaded = new bool[4];
         public static Sprite GetNormal(int type)
         {

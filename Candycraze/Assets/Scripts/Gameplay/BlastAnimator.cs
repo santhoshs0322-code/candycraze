@@ -31,18 +31,56 @@ namespace CandyCraze
 
         /// <summary>Play the correct blast for a special gem type.</summary>
         public void PlayBlast(GemSpecialType type, Vector3 worldPos, Color gemColor,
-                              List<GemView> affectedGems = null, bool? lineBlastVertical = null)
+                              List<GemView> affectedGems = null, bool? lineBlastVertical = null,
+                              GemView source = null)
         {
+            // Keep positions valid after the board destroys the original candies.
+            var positions = new List<Vector3>();
+            if (affectedGems != null)
+                foreach (var gem in affectedGems)
+                    if (gem != null) positions.Add(gem.transform.position);
+            StartCoroutine(ChargedBlast(type, worldPos, gemColor, positions, lineBlastVertical, source));
+        }
+
+        private IEnumerator ChargedBlast(GemSpecialType type, Vector3 worldPos, Color gemColor,
+            List<Vector3> positions, bool? vertical, GemView source)
+        {
+            if (source != null)
+            {
+                // Animate a visual copy so gravity/destruction cannot interrupt the wind-up.
+                var original = source.GetComponent<SpriteRenderer>();
+                if (original != null && original.sprite != null)
+                {
+                    var copy = new GameObject("PowerChargeCandy");
+                    copy.transform.position = worldPos;
+                    var sr = copy.AddComponent<SpriteRenderer>();
+                    sr.sprite = original.sprite;
+                    sr.sortingOrder = 25;
+                    Vector3 scale = source.transform.lossyScale;
+                    original.enabled = false;
+                    float duration = type == GemSpecialType.ColorCrystal ? .42f : .25f;
+                    for (float t = 0; t < duration; t += Time.deltaTime)
+                    {
+                        float progress = Mathf.Clamp01(t / duration);
+                        copy.transform.localScale = scale * Mathf.Lerp(1f, 1.65f, Mathf.Sin(progress * Mathf.PI * .5f));
+                        copy.transform.rotation = Quaternion.Euler(0, 0, Mathf.Sin(progress * Mathf.PI * 6f) * 5f);
+                        yield return null;
+                    }
+                    SpawnDebris(worldPos, gemColor, 12);
+                    Destroy(copy);
+                    if (original != null) original.enabled = true;
+                }
+            }
             switch (type)
             {
                 case GemSpecialType.LineBlast:
-                    StartCoroutine(LineBlastAnim(worldPos, gemColor, affectedGems, lineBlastVertical));
+                    yield return StartCoroutine(LineBlastAnim(worldPos, gemColor, positions, vertical));
                     break;
                 case GemSpecialType.AreaBomb:
-                    StartCoroutine(AreaBombAnim(worldPos, gemColor, affectedGems));
+                    yield return StartCoroutine(AreaBombAnim(worldPos, gemColor, positions));
                     break;
                 case GemSpecialType.ColorCrystal:
-                    StartCoroutine(ColorCrystalAnim(worldPos, gemColor, affectedGems));
+                    yield return StartCoroutine(ColorCrystalAnim(worldPos, gemColor, positions));
                     break;
             }
         }
@@ -58,7 +96,7 @@ namespace CandyCraze
         // ════════════════════════════════════════════════════
 
         IEnumerator LineBlastAnim(Vector3 origin, Color color,
-                                   List<GemView> affected, bool? vertical)
+                                   List<Vector3> affected, bool? vertical)
         {
             // 1. Flash the origin gem white
             yield return StartCoroutine(FlashAt(origin, color, 0.12f));
@@ -80,7 +118,7 @@ namespace CandyCraze
             // 5. Burst particles along the swept path
             if (affected != null)
                 foreach (var g in affected)
-                    ParticleManager.Instance?.PlayMatchBurst(g.transform.position, color);
+                    ParticleManager.Instance?.PlayMatchBurst(g, color);
 
             // 6. Fade beams
             yield return StartCoroutine(FadeAndDestroy(hBeam, 0.15f));
@@ -92,7 +130,7 @@ namespace CandyCraze
         // ════════════════════════════════════════════════════
 
         IEnumerator AreaBombAnim(Vector3 origin, Color color,
-                                  List<GemView> affected)
+                                  List<Vector3> affected)
         {
             // 1. Charge-up: gem vibrates and grows
             yield return StartCoroutine(ChargeUp(origin, color, 0.3f));
@@ -119,7 +157,7 @@ namespace CandyCraze
             {
                 foreach (var g in affected)
                 {
-                    ParticleManager.Instance?.PlayComboBurst(g.transform.position, color);
+                    ParticleManager.Instance?.PlayComboBurst(g, color);
                     yield return new WaitForSeconds(0.02f);
                 }
             }
@@ -130,7 +168,7 @@ namespace CandyCraze
         // ════════════════════════════════════════════════════
 
         IEnumerator ColorCrystalAnim(Vector3 origin, Color color,
-                                      List<GemView> affected)
+                                      List<Vector3> affected)
         {
             // 1. Rainbow spiral from origin
             StartCoroutine(RainbowSpiral(origin, 0.5f));
@@ -144,8 +182,7 @@ namespace CandyCraze
             {
                 foreach (var g in affected)
                 {
-                    StartCoroutine(LightningBolt(origin, g.transform.position, color));
-                    yield return new WaitForSeconds(0.03f);
+                    StartCoroutine(LightningBolt(origin, g, Color.HSVToRGB(Random.value, .8f, 1f)));
                 }
             }
 
@@ -157,7 +194,7 @@ namespace CandyCraze
             // 4. Burst at every affected gem
             if (affected != null)
                 foreach (var g in affected)
-                    ParticleManager.Instance?.PlaySpecialBurst(g.transform.position,
+                    ParticleManager.Instance?.PlaySpecialBurst(g,
                         Color.HSVToRGB(Random.value, 0.8f, 1f));
         }
 
@@ -205,6 +242,13 @@ namespace CandyCraze
 
             Color c = color; c.a = 0.9f;
             sr.color = c;
+
+            var core = new GameObject("SugarBeamCore").AddComponent<SpriteRenderer>();
+            core.transform.SetParent(go.transform, false);
+            core.sprite = WhiteSprite();
+            core.color = new Color(1f, 1f, 1f, .95f);
+            core.sortingOrder = 21;
+            core.transform.localScale = horizontal ? new Vector3(1f, .32f, 1f) : new Vector3(.32f, 1f, 1f);
 
             return go;
         }
@@ -282,7 +326,7 @@ namespace CandyCraze
                 float scale = Mathf.Lerp(0.1f, 0.8f, t);
                 float shake = Mathf.Sin(elapsed * 40f) * 0.05f * t;
                 go.transform.localScale   = Vector3.one * scale;
-                go.transform.localPosition = new Vector3(shake, shake, 0f);
+                go.transform.position = pos + new Vector3(shake, shake, 0f);
                 c.a = 0.4f + t * 0.4f;
                 sr.color = c;
                 yield return null;
@@ -521,6 +565,8 @@ namespace CandyCraze
                 Color c = start;
                 c.a = Mathf.Lerp(start.a, 0f, elapsed / duration);
                 sr.color = c;
+                foreach (var child in go.GetComponentsInChildren<SpriteRenderer>())
+                    if (child != sr) child.color = new Color(1f, 1f, 1f, c.a);
                 yield return null;
             }
             if (go != null) Destroy(go);
