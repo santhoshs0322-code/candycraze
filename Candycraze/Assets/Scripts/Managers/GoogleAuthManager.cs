@@ -34,7 +34,14 @@ public class GoogleAuthManager : MonoBehaviour
             PlayGamesPlatform.Activate().ManuallyAuthenticate(status =>
             {
                 if (current != operation) return;
-                if (status != SignInStatus.Success) { Fail("Sign-in cancelled or unavailable. You can still play as guest."); return; }
+                if (status != SignInStatus.Success)
+                {
+                    Debug.LogWarning("[GoogleAuth] Play Games authentication failed: " + status);
+                    Fail(status == SignInStatus.Canceled
+                        ? "Google Play Games sign-in was not completed. Please try again. Guest play is available."
+                        : "Google Play Games could not sign in (" + status + "). Please contact support. Guest play is available.");
+                    return;
+                }
                 try
                 {
                     SetState(true, "Restoring your saved adventure...");

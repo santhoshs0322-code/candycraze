@@ -4,5 +4,7 @@
 
     <!-- Required for Android 13+ advertising ID access -->
     <uses-permission android:name="com.google.android.gms.permission.AD_ID" />
+    <!-- Required for Play Console one-time product setup. -->
+    <uses-permission android:name="com.android.vending.BILLING" />
 
 </manifest>
