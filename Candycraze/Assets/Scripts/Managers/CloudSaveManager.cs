@@ -62,6 +62,7 @@ public class CloudSaveManager : MonoBehaviour
     }
     public void UploadCurrentSave()
     {
+        if (IAPManager.Instance != null && IAPManager.Instance.VerificationInProgress) return;
         if (!IsSignedIn || syncing || conflict || SaveManager.Instance == null || !SaveManager.Instance.HasPendingSave) return;
         if (Application.internetReachability == NetworkReachability.NotReachable)
         { StatusMessage = "Offline. Progress backed up on this device."; return; }
@@ -126,6 +127,43 @@ public class CloudSaveManager : MonoBehaviour
         request.SetRequestHeader("Content-Type", "application/json");
         return request;
     }
+    public IEnumerator BillingRequest(string productId, string purchaseToken, Action<bool, string> completed)
+    {
+        bool verify = !string.IsNullOrEmpty(purchaseToken);
+        float timeout = Time.realtimeSinceStartup + 65;
+        if (!verify) UploadCurrentSave();
+        while (syncing && Time.realtimeSinceStartup < timeout) yield return null;
+        if (!IsSignedIn || syncing || (!verify && (conflict || SaveManager.Instance.HasPendingSave)))
+        { completed(false, "Sign in and sync your progress before purchasing."); yield break; }
+        string account = PlayerId, token = sessionToken;
+        syncing = true;
+        try
+        {
+            var body = new BillingBody { sessionToken = token, productId = productId, purchaseToken = purchaseToken };
+            using (var request = Request(verify ? "/api/billing/verify" : "/api/billing/account", JsonUtility.ToJson(body)))
+            {
+                yield return request.SendWebRequest();
+                if (token != sessionToken || account != PlayerId)
+                { completed(false, "Account changed. Sign in to the purchasing account to restore."); yield break; }
+                BillingResponse response = null;
+                try { response = JsonUtility.FromJson<BillingResponse>(request.downloadHandler.text); } catch (Exception) { }
+                if (request.result != UnityWebRequest.Result.Success || response == null || !response.success)
+                { completed(false, response?.error ?? "Purchase verification delayed. Please restore purchases when online."); yield break; }
+                if (verify)
+                {
+                    string error = null;
+                    try { SaveManager.Instance.ApplyVerifiedCrystals(response.purchasedCrystalsTotal, response.revision); }
+                    catch (Exception) { error = "Please sign in again to restore your purchased crystals."; }
+                    if (error != null) { completed(false, error); yield break; }
+                    conflict = false;
+                }
+                completed(true, verify ? "Crystals added to your account." : response.accountId);
+            }
+        }
+        finally { if (token == sessionToken) syncing = false; }
+    }
+    [Serializable] private class BillingBody { public string sessionToken, productId, purchaseToken; }
+    [Serializable] private class BillingResponse : Response { public string accountId; public int purchasedCrystalsTotal; }
     [Serializable] private class LoginRequest { public string authorizationCode, appVersion; }
     [Serializable] private class LogoutRequest { public string sessionToken; }
     [Serializable] private class UploadRequest { public string sessionToken, saveData; public int revision; }

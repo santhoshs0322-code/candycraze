@@ -11,7 +11,7 @@ COPY Candycraze/Server/package*.json ./
 RUN npm ci --omit=dev
 
 # Copy the rest of the application code
-COPY Candycraze/Server/app.js Candycraze/Server/google.js Candycraze/Server/profile.js Candycraze/Server/server.js ./
+COPY Candycraze/Server/app.js Candycraze/Server/google.js Candycraze/Server/profile.js Candycraze/Server/billing.js Candycraze/Server/server.js ./
 USER node
 
 # Expose port 3000 (default for this server, overridable via PORT env var)

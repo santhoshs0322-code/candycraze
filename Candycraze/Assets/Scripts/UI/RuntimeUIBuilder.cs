@@ -198,14 +198,17 @@ namespace CandyCraze
             Txt("ShopTitle", shopPanel.transform, V2(0.5f,0.5f),V2(0.5f,0.5f),
                 V2(0,H*0.35f), V2(W*0.8f,80), "SHOP", 52, C_GOLD,
                 TextAnchor.MiddleCenter, bold:true);
-            Txt("ShopMsg", shopPanel.transform, V2(0.5f,0.5f),V2(0.5f,0.5f),
-                V2(0,H*0.05f), V2(W*0.8f,120), "Coin packs & boosters\ncoming soon!",
-                34, C_CYAN);
-            // Free coins button for testing
-            var freeCoins = Btn("FreeCoins", shopPanel.transform, V2(0.5f,0.5f),V2(0.5f,0.5f),
-                V2(0,-H*0.06f), V2(W*0.82f,130), "Get 500 Coins (Free)", 38, C_GOLD, C_GOLD*0.7f, C_WHITE);
+            var shopStatus = Txt("ShopMsg", shopPanel.transform, V2(0.5f,0.5f),V2(0.5f,0.5f),
+                V2(0,-H*0.12f), V2(W*0.85f,120), "Loading Google Play prices...", 30, C_CYAN);
+            var packButtons = new Button[3];
+            for (int i = 0; i < packButtons.Length; i++)
+                packButtons[i] = Btn("CrystalPack" + i, shopPanel.transform, V2(.5f,.5f), V2(.5f,.5f),
+                    V2(0,H*(.23f-i*.1f)), V2(W*.82f,130), "Loading...", 38, C_GOLD, C_GOLD*.7f, C_WHITE);
+            var restorePurchases = Btn("RestorePurchases", shopPanel.transform, V2(.5f,.5f),V2(.5f,.5f),
+                V2(0,-H*.22f), V2(W*.82f,90), "RESTORE / REFRESH", 32, C_GREEN, C_GDARK, C_WHITE);
+            shopPanel.AddComponent<CrystalShopView>().Configure(packButtons, shopStatus, restorePurchases);
             var closeShop = Btn("CloseShop", shopPanel.transform, V2(0.5f,0.5f),V2(0.5f,0.5f),
-                V2(0,-H*0.26f), V2(W*0.6f,120), "CLOSE", 42, C_RED, C_RED*0.7f, C_WHITE);
+                V2(0,-H*0.32f), V2(W*0.6f,120), "CLOSE", 42, C_RED, C_RED*0.7f, C_WHITE);
             shopPanel.SetActive(false);
 
             // Store panel refs for the controller
@@ -236,19 +239,6 @@ namespace CandyCraze
                 AudioManager.Instance?.ToggleMusic();
                 var t = musicBtn.transform.Find("Label")?.GetComponent<Text>();
                 if (t != null) t.text = (AudioManager.Instance?.MusicOn ?? true) ? "Music: ON" : "Music: OFF";
-            });
-            freeCoins?.onClick.AddListener(() => {
-                if (SaveManager.Instance != null)
-                {
-                    SaveManager.Instance.Data.Coins += 500;
-                    SaveManager.Instance.Data.BoosterHammer += 3;
-                    SaveManager.Instance.Data.BoosterShuffle += 3;
-                    SaveManager.Instance.Data.BoosterColorBlast += 3;
-                    SaveManager.Instance.Save();
-                    if (GoogleAuthManager.Instance != null && GoogleAuthManager.Instance.IsAuthenticated())
-                        CloudSaveManager.Instance?.UploadCurrentSave();
-                    if (CoinsText != null) CoinsText.text = $"✦ {SaveManager.Instance.Data.Coins}";
-                }
             });
         }
 

@@ -19,9 +19,9 @@ namespace CandyCraze
         }
 
         // ── Coin Packs ───────────────────────────────────────
-        public void BuyCoinsSmall()  => SimulateBuy(IAPProductIDs.Coins_Small,  500,  "500 Crystals");
-        public void BuyCoinsMedium() => SimulateBuy(IAPProductIDs.Coins_Medium, 1200, "1200 Crystals");
-        public void BuyCoinsLarge()  => SimulateBuy(IAPProductIDs.Coins_Large,  2800, "2800 Crystals");
+        public void BuyCoinsSmall()  => BuyCrystalPack(IAPProductIDs.Coins_Small, "500 Crystals");
+        public void BuyCoinsMedium() => BuyCrystalPack(IAPProductIDs.Coins_Medium, "1200 Crystals");
+        public void BuyCoinsLarge()  => BuyCrystalPack(IAPProductIDs.Coins_Large, "2800 Crystals");
 
         // ── Lives ────────────────────────────────────────────
         public void BuyLives()
@@ -92,7 +92,7 @@ namespace CandyCraze
             OnPurchaseComplete.Invoke();
         }
 
-        private void SimulateBuy(string productId, int coins, string label)
+        private void BuyCrystalPack(string productId, string label)
         {
             IAPManager.Instance?.BuyProduct(
                 productId,
@@ -100,8 +100,7 @@ namespace CandyCraze
                 {
                     if (SaveManager.Instance != null)
                     {
-                        SaveManager.Instance.Data.Coins += coins;
-                        SaveManager.Instance.Save();
+                        // The backend has already granted and restored these crystals.
                         OnPurchaseComplete.Invoke();
                         Debug.Log($"[Shop] {label} purchased.");
                     }

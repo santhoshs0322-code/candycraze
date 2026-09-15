@@ -29,6 +29,7 @@ namespace CandyCraze
     public class SaveData
     {
         public int SchemaVersion = 2;
+        public int PurchasedCrystalsTotal;
         public int LevelsStarted, LevelsWon, LevelsLost, TotalMoves, BoostersUsed, DailyRewardsClaimed;
         public double PlaySeconds;
         public string UpdatedAtUtc, AppVersion;

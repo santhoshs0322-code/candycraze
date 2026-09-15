@@ -27,12 +27,14 @@ namespace CandyCraze
         private void OnEnable()
         {
             RefreshCoins();
+            if (IAPManager.Instance != null) IAPManager.Instance.OnChanged += RefreshBillingStatus;
             if (ShopManager.Instance != null)
                 ShopManager.Instance.OnPurchaseComplete.AddListener(OnPurchase);
         }
 
         private void OnDisable()
         {
+            if (IAPManager.Instance != null) IAPManager.Instance.OnChanged -= RefreshBillingStatus;
             if (ShopManager.Instance != null)
                 ShopManager.Instance.OnPurchaseComplete.RemoveListener(OnPurchase);
         }
@@ -107,6 +109,11 @@ namespace CandyCraze
         private void ShowStatus(string msg)
         {
             if (_statusText != null) _statusText.text = msg;
+        }
+        private void RefreshBillingStatus()
+        {
+            RefreshCoins();
+            ShowStatus(IAPManager.Instance?.StatusMessage ?? "Connecting...");
         }
     }
 }

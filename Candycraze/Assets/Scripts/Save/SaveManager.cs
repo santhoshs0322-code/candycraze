@@ -134,6 +134,15 @@ namespace CandyCraze
             HasPendingSave = SaveGeneration != uploadedGeneration;
             Persist();
         }
+        public void ApplyVerifiedCrystals(int totalPurchased, int revision)
+        {
+            if (totalPurchased < Data.PurchasedCrystalsTotal || revision < CloudRevision)
+                throw new InvalidOperationException("Purchase restore needs a fresh cloud sign-in.");
+            Data.Coins = checked(Data.Coins + (totalPurchased - Data.PurchasedCrystalsTotal));
+            Data.PurchasedCrystalsTotal = totalPurchased;
+            CloudRevision = revision;
+            Save();
+        }
         public void ResetToGuest()
         {
             AccountId = null; CloudRevision = 0; HasPendingSave = false;

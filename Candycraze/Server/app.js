@@ -1,6 +1,7 @@
 import express from 'express';
 import { createHash, randomBytes } from 'node:crypto';
 import { defaultSave, validateSave } from './profile.js';
+import { crystalProducts, billingAccountId, verifyPurchase, consumePurchase } from './billing.js';
 
 const hash = token => createHash('sha256').update(token).digest('hex');
 const reject = (message, status) => Object.assign(new Error(message), { status });
@@ -17,7 +18,7 @@ export function createApp({ players, verify, now = () => new Date(), trustedProx
   app.use(express.json({ limit: '1mb', strict: true }));
   // Bounded, per-process abuse protection; use an edge rate limiter for multi-instance deployment.
   const attempts = new Map();
-  app.use('/api/auth/play-games', (req, res, next) => {
+  app.use(['/api/auth/play-games', '/api/billing'], (req, res, next) => {
     const time = Date.now();
     for (const [ip, entry] of attempts) if (time - entry.start > 60000) attempts.delete(ip);
     const ip = req.ip;
@@ -37,6 +38,47 @@ export function createApp({ players, verify, now = () => new Date(), trustedProx
     return { user, sessionHash };
   }
   app.get('/health', (req, res) => res.json({ ok: true }));
+  app.post('/api/billing/account', route(async (req, res) => {
+    const { user } = await session(req.body);
+    if (!process.env.PLAY_SERVICE_ACCOUNT_EMAIL || !process.env.PLAY_SERVICE_ACCOUNT_PRIVATE_KEY)
+      throw reject('Purchases are not available yet. Please try later.', 503);
+    res.json({ success: true, accountId: billingAccountId(user.playerId) });
+  }));
+  app.post('/api/billing/verify', route(async (req, res) => {
+    const { user, sessionHash } = await session(req.body);
+    const { productId, purchaseToken } = req.body;
+    if (!Object.hasOwn(crystalProducts, productId) || typeof purchaseToken !== 'string' ||
+        purchaseToken.length < 10 || purchaseToken.length > 4096) throw reject('Invalid purchase.', 400);
+    const tokenHash = hash(purchaseToken);
+    let receipt = user.purchases?.find(p => p.tokenHash === tokenHash);
+    if (receipt && receipt.productId !== productId) throw reject('Purchase product did not match.', 400);
+    if (!receipt) {
+      const verified = await verifyPurchase(productId, purchaseToken, user.playerId);
+      const amount = crystalProducts[productId] * verified.quantity;
+      receipt = { tokenHash, productId, amount, quantity: verified.quantity,
+        orderId: verified.orderId, test: verified.test, grantedAt: now(), consumed: false };
+      // Receipt and credit are committed atomically inside the same player document.
+      // Unique token index also prevents a receipt belonging to two players.
+      await players.updateOne({ _id: user._id, sessionHash, sessionExpiresAt: { $gt: now() },
+        'purchases.tokenHash': { $ne: tokenHash }, 'save.Coins': { $lte: 2147483647 - amount },
+        $or: [{ 'save.PurchasedCrystalsTotal': { $exists: false } },
+              { 'save.PurchasedCrystalsTotal': { $lte: 2147483647 - amount } }] },
+        { $push: { purchases: receipt }, $inc: { 'save.Coins': amount,
+          'save.PurchasedCrystalsTotal': amount, revision: 1 },
+          $set: { updatedAt: now() }, $unset: { saveHash: '' } }, { writeConcern: { w: 'majority', j: true } });
+    }
+    const current = await players.findOne({ _id: user._id, sessionHash, sessionExpiresAt: { $gt: now() } });
+    receipt = current?.purchases?.find(p => p.tokenHash === tokenHash);
+    if (!receipt) throw reject('Purchase could not be credited. Sign in again and restore purchases.', 409);
+    // Never consume until the durable grant exists. Retry safely on the next request.
+    if (!receipt.consumed) {
+      await consumePurchase(productId, purchaseToken);
+      await players.updateOne({ _id: user._id, 'purchases.tokenHash': tokenHash },
+        { $set: { 'purchases.$.consumed': true } });
+    }
+    res.json({ success: true, revision: current.revision,
+      purchasedCrystalsTotal: current.save.PurchasedCrystalsTotal ?? 0 });
+  }));
   app.post('/api/auth/play-games', route(async (req, res) => {
     const identity = await verify(req.body?.authorizationCode); // Never accept identity from the client.
     const date = now(), sessionToken = randomBytes(32).toString('hex');
@@ -65,6 +107,8 @@ export function createApp({ players, verify, now = () => new Date(), trustedProx
     if (!Number.isSafeInteger(revision) || revision < 0) throw reject('Invalid revision.', 400);
     if (typeof req.body.saveData !== 'string') throw reject('Invalid save payload.', 400);
     const save = validateSave(req.body.saveData), fingerprint = hash(JSON.stringify(save));
+    if (save.PurchasedCrystalsTotal !== (user.save.PurchasedCrystalsTotal ?? 0))
+      throw reject('A purchase is waiting to be restored. Restore purchases or sign in again.', 409);
     // Retrying a request whose response was lost does not apply it a second time.
     if (user.revision === revision + 1 && user.saveHash === fingerprint)
       return res.json({ success: true, revision: user.revision });

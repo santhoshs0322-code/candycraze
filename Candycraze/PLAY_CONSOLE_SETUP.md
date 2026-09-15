@@ -20,17 +20,34 @@ Official guidance: https://codelabs.developers.google.com/pgs-workshop-setup-uni
 
 The Android manifest declares `com.android.vending.BILLING`, and the custom main Gradle template includes `com.android.billingclient:billing:8.0.0`. The library supplies its version metadata through manifest merging; do not add a fake version marker manually. The previous permission-only build was reported as AIDL by Play Console. Build a new AAB with a version code greater than 39 (and greater than any already uploaded code), then upload it. The already-uploaded build does not change from a Git update.
 
-After Google processes that build, go to Monetize with Play > Products > One-time products. Create each product, add a Buy purchase option, set regional availability and pricing, then activate it. The product ID must exactly match the eventual checkout catalog. Decide final IDs before activating products: the current IAPProductIDs still use `com.yourcompany` placeholders.
+After Google processes that build, go to Monetize with Play > Products > One-time products. Each product must have an active Buy purchase option with ID `standard-buy`, regional availability and pricing. The app now uses the exact IDs below and displays prices returned by Google Play.
 
-Planned packs from ShopManager:
+Implemented crystal packs:
 
-| Pack | Grant | Suggested final product ID |
+| Pack | Grant | Product ID |
 | --- | --- | --- |
 | Small | 500 crystals | coins_small |
 | Medium | 1,200 crystals | coins_medium |
 | Large | 2,800 crystals | coins_large |
 
-Important: real checkout is not implemented. Packages/manifest.json has no Unity Purchasing dependency, and IAPManager is explicitly a stub that fails purchases on mobile. Adding permission and creating products does not implement payment processing. Keep paid sales disabled until a supported billing integration, store prices, pending/cancelled purchase handling, purchase verification, durable duplicate-safe grants, consumption/acknowledgement, and recovery are implemented. Validate payments with Play license testers before offering them publicly.
+Checkout now uses a native Billing Library 8 Java bridge, not Unity Purchasing. The server verifies the Google purchase token, product, quantity, paid state and obfuscated player identity, atomically credits crystals with a receipt inside the existing player document, then consumes the purchase. Duplicate callbacks reuse that receipt. Pending/cancelled payments are not granted. Unfinished tokens are retained on-device for retries; the app also queries owned purchases on reconnect and sign-in. Consumption acknowledges consumable delivery.
+
+## Backend deployment required for purchases
+
+1. In Google Cloud Console, enable the Google Play Android Developer API and create a service account for this backend.
+2. In Play Console > Users and permissions, invite that service account email. Grant access to CandyCraze with View financial data, orders, and cancellation survey responses (or the app-level equivalent), and Manage orders and subscriptions as described in Google's guide below.
+3. Create a JSON key for that service account. In Render > your backend service > Environment, set:
+   - PLAY_SERVICE_ACCOUNT_EMAIL = the key's client_email.
+   - PLAY_SERVICE_ACCOUNT_PRIVATE_KEY = the key's private_key, including BEGIN/END PRIVATE KEY markers. Actual newlines or escaped backslash-n sequences are accepted.
+4. Keep the existing MONGODB_URI, GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET. Billing service-account credentials are separate from Play Games OAuth credentials. Never put the private key in Unity, Git, screenshots or chat.
+5. Deploy the dev branch backend. Both Dockerfiles include billing.js. Startup adds a unique sparse purchase-token-hash index to the players collection. MongoDB grants use majority journaled writes.
+6. Build a new signed Android AAB with an unused higher version code and upload it to internal/closed testing. Activate the three standard-buy options. Install through Google Play using a license tester and sign in to the game before buying.
+
+Official service-account setup: https://developers.google.com/android-publisher/getting_started
+
+No builds or payment tests have been run for this change, per request. Before public sales, exercise approved, declined, cancelled and pending test payments, app closure during payment, offline retry, repeat purchases, switching accounts, and reinstall/sign-in. Verify each paid token adds its pack only once and that another user's account cannot claim it. Check a consumed purchase restores from the player's cloud profile rather than being granted again.
+
+Scope: this implements crystal-pack checkout, not basket products. General gameplay progress and earned/spent coins still use the existing client-reported save system; this is not a fully server-authoritative anti-cheat economy. Automated refund/chargeback reconciliation is not included; handle refunds through Play Console/support until that is added. Purchase history remains in the single player document; plan archival before approaching MongoDB's document-size limit.
 
 Official product setup: https://support.google.com/googleplay/android-developer/answer/16430488
 

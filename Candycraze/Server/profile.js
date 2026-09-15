@@ -18,6 +18,7 @@ export function validateSave(json) {
   try { input = JSON.parse(json); } catch { throw Object.assign(new Error('Invalid save JSON.'), { status: 400 }); }
   if (!input || Array.isArray(input) || typeof input !== 'object') throw Object.assign(new Error('Invalid save.'), { status: 400 });
   const save = defaultSave();
+  save.PurchasedCrystalsTotal = integer(input.PurchasedCrystalsTotal ?? 0);
   for (const key of counters) if (input[key] !== undefined) save[key] = integer(input[key]);
   for (const key of ['SoundOn', 'MusicOn', 'StarterBoostersGranted']) if (input[key] !== undefined) {
     if (typeof input[key] !== 'boolean') throw Object.assign(new Error('Invalid preference.'), { status: 400 });

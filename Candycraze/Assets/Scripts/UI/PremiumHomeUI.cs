@@ -14,6 +14,7 @@ namespace CandyCraze
             if (SaveManager.Instance == null) new GameObject("SaveManager").AddComponent<SaveManager>();
             if (GoogleAuthManager.Instance == null) new GameObject("GoogleAuthManager").AddComponent<GoogleAuthManager>();
             if (CloudSaveManager.Instance == null) new GameObject("CloudSaveManager").AddComponent<CloudSaveManager>();
+            if (IAPManager.Instance == null) new GameObject("IAPManager").AddComponent<IAPManager>();
             root = CandyTheme.Page("PremiumHome");
             var purse = CandyTheme.Card(root, "CoinPill", .06f,.927f,.39f,.98f,CandyTheme.Cream);
             coins = CandyTheme.Label(purse.transform,"0 coins",0,0,1,1,32);
@@ -34,8 +35,9 @@ namespace CandyCraze
             play = CandyTheme.Button(root,"LET'S PLAY",.14f,.428f,.86f,.515f,CandyTheme.Pink,
                 () => SceneController.NavigateTo(Constants.SCENE_LEVEL_MAP),54);
             progress = CandyTheme.Label(root,"Your adventure starts here",.08f,.38f,.92f,.425f,28);
-            daily = CandyTheme.Button(root,"DAILY TREAT",.075f,.304f,.487f,.369f,CandyTheme.Purple,ShowDaily,30);
-            settings = CandyTheme.Button(root,"SETTINGS",.513f,.304f,.925f,.369f,CandyTheme.Mint,ShowSettings,30);
+            daily = CandyTheme.Button(root,"DAILY TREAT",.045f,.304f,.345f,.369f,CandyTheme.Purple,ShowDaily,25);
+            CandyTheme.Button(root,"SHOP",.36f,.304f,.64f,.369f,CandyTheme.Pink,ShowShop,28);
+            settings = CandyTheme.Button(root,"SETTINGS",.655f,.304f,.955f,.369f,CandyTheme.Mint,ShowSettings,25);
             var account = CandyTheme.Card(root,"PlayerCard",.065f,.046f,.935f,.272f,CandyTheme.Cream);
             identity = CandyTheme.Label(account.transform,"GUEST ADVENTURER",.06f,.71f,.94f,.94f,34);
             status = CandyTheme.Label(account.transform,"",.06f,.35f,.94f,.70f,30);
@@ -58,7 +60,7 @@ namespace CandyCraze
             if (coins == null || SaveManager.Instance == null) return;
             var data = SaveManager.Instance.Data; var auth = GoogleAuthManager.Instance;
             bool signed = auth != null && auth.IsAuthenticated(), busy = auth != null && auth.IsBusy;
-            coins.text = data.Coins.ToString("N0") + " coins";
+            coins.text = data.Coins.ToString("N0") + " crystals";
             progress.text = "Level " + data.CurrentLevel + " unlocked  •  " + data.TotalStars + " stars";
             identity.text = signed ? "Hello, " + auth.GetUserDisplayName() : "GUEST ADVENTURER";
             status.text = signed ? CloudSaveManager.Instance.StatusMessage : auth.StatusMessage;
@@ -101,6 +103,20 @@ namespace CandyCraze
             });
             CandyTheme.Button(card,"CANDY POWER GUIDE",.1f,.20f,.9f,.34f,CandyTheme.Purple,() => CandyPowerGuide.Show(root),30);
             CandyTheme.Button(card,"ALL SET",.1f,.03f,.9f,.17f,CandyTheme.Pink,CloseDialog);
+        }
+        private void ShowShop()
+        {
+            CloseDialog();
+            var card = CandyTheme.Modal(root,"Crystal shop",out dialog);
+            var buttons = new Button[3];
+            for (int i = 0; i < buttons.Length; i++)
+                buttons[i] = CandyTheme.Button(card,"Loading...",.08f,.64f-i*.15f,.92f,.77f-i*.15f,
+                    CandyTheme.Purple,() => { },30);
+            var message = CandyTheme.Label(card,"",.07f,.19f,.93f,.33f,24);
+            var restore = CandyTheme.Button(card,"RESTORE / REFRESH",.08f,.105f,.92f,.19f,
+                CandyTheme.Mint,() => { },25);
+            CandyTheme.Button(card,"CLOSE",.08f,.015f,.92f,.10f,CandyTheme.Pink,CloseDialog,25);
+            dialog.AddComponent<CrystalShopView>().Configure(buttons,message,restore);
         }
     }
 }

@@ -8,6 +8,7 @@ await client.connect();
 const players = client.db(process.env.MONGODB_DATABASE || 'candycraze').collection('players');
 // Non-unique session index: records without an active session can coexist.
 await players.createIndex({ sessionHash: 1 }, { sparse: true });
+await players.createIndex({ 'purchases.tokenHash': 1 }, { unique: true, sparse: true });
 const trustedProxies = process.env.TRUSTED_PROXY_CIDRS ? process.env.TRUSTED_PROXY_CIDRS.split(',').map(value => value.trim()) : false;
 const server = createApp({ players, verify: code => verifyPlayGamesCode(code), trustedProxies }).listen(Number(process.env.PORT || 3000),
   () => console.log('CandyCraze player service ready'));

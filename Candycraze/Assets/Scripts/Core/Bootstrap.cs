@@ -46,6 +46,8 @@ namespace CandyCraze
                 cloudObject.AddComponent<CloudSaveManager>();
             }
 
+            if (IAPManager.Instance == null) new GameObject("IAPManager").AddComponent<IAPManager>();
+
             // Initialise DailyRewardManager
             if (DailyRewardManager.Instance == null)
             {
