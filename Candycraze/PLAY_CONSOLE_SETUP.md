@@ -18,7 +18,7 @@ Official guidance: https://codelabs.developers.google.com/pgs-workshop-setup-uni
 
 ## Unblock one-time product creation
 
-The Android manifest now declares `com.android.vending.BILLING`. Build a new AAB with a higher version code and upload it to Play Console. The already-uploaded build does not gain this permission from a Git update.
+The Android manifest declares `com.android.vending.BILLING`, and the custom main Gradle template includes `com.android.billingclient:billing:8.0.0`. The library supplies its version metadata through manifest merging; do not add a fake version marker manually. The previous permission-only build was reported as AIDL by Play Console. Build a new AAB with a version code greater than 39 (and greater than any already uploaded code), then upload it. The already-uploaded build does not change from a Git update.
 
 After Google processes that build, go to Monetize with Play > Products > One-time products. Create each product, add a Buy purchase option, set regional availability and pricing, then activate it. The product ID must exactly match the eventual checkout catalog. Decide final IDs before activating products: the current IAPProductIDs still use `com.yourcompany` placeholders.
 
@@ -33,3 +33,11 @@ Planned packs from ShopManager:
 Important: real checkout is not implemented. Packages/manifest.json has no Unity Purchasing dependency, and IAPManager is explicitly a stub that fails purchases on mobile. Adding permission and creating products does not implement payment processing. Keep paid sales disabled until a supported billing integration, store prices, pending/cancelled purchase handling, purchase verification, durable duplicate-safe grants, consumption/acknowledgement, and recovery are implemented. Validate payments with Play license testers before offering them publicly.
 
 Official product setup: https://support.google.com/googleplay/android-developer/answer/16430488
+
+## Version 39 symbol warnings
+
+Release minification is disabled in this project, so there is no R8/ProGuard mapping file to upload. The deobfuscation warning does not block this non-obfuscated build.
+
+For native symbols, use CandyCraze > Build Release AAB, which enables Public Android symbols, or set Create symbols.zip to Public in Android Build Settings before building normally. Upload the symbols archive generated alongside that exact AAB to its version's native debug symbols section in App Bundle Explorer. Do not use a symbols archive from version 34, 35, or 36 for version 39 or a later build. Symbols help diagnose crashes; they do not fix crashes themselves.
+
+Billing version policy: https://developer.android.com/google/play/billing/deprecation-faq

@@ -3,6 +3,9 @@ apply plugin: 'com.android.library'
 
 dependencies {
     implementation fileTree(dir: 'libs', include: ['*.jar'])
+    // Keep outside the resolver-owned block so dependency resolution preserves it.
+    // The AAR supplies the real billing library and its version manifest metadata.
+    implementation 'com.android.billingclient:billing:8.0.0'
 // Android Resolver Dependencies Start
     implementation 'com.google.android.gms:play-services-games-v2:22.0.0' // Assets/GooglePlayGames/com.google.play.games/Editor/GooglePlayGamesPluginDependencies.xml:9
     implementation 'com.google.android.gms:play-services-nearby:18.5.0' // Assets/GooglePlayGames/com.google.play.games/Editor/GooglePlayGamesPluginDependencies.xml:14
