@@ -16,6 +16,11 @@ export function createApp({ players, verify, now = () => new Date(), trustedProx
     next();
   });
   app.use(express.json({ limit: '1mb', strict: true }));
+  app.use((req, res, next) => {
+    const startedAt = Date.now();
+    res.on('finish', () => console.log(`[HTTP] ${req.method} ${req.path} ${res.statusCode} ${Date.now() - startedAt}ms`));
+    next();
+  });
   // Bounded, per-process abuse protection; use an edge rate limiter for multi-instance deployment.
   const attempts = new Map();
   app.use(['/api/auth/play-games', '/api/billing'], (req, res, next) => {
@@ -80,6 +85,7 @@ export function createApp({ players, verify, now = () => new Date(), trustedProx
       purchasedCrystalsTotal: current.save.PurchasedCrystalsTotal ?? 0 });
   }));
   app.post('/api/auth/play-games', route(async (req, res) => {
+    console.log('[AUTH] sign-in request received');
     const identity = await verify(req.body?.authorizationCode); // Never accept identity from the client.
     const date = now(), sessionToken = randomBytes(32).toString('hex');
     const update = {
@@ -98,6 +104,7 @@ export function createApp({ players, verify, now = () => new Date(), trustedProx
       if (error.code !== 11000) throw error;
       user = await players.findOneAndUpdate({ _id: identity.playerId }, update, { returnDocument: 'after' });
     }
+    console.log(`[AUTH] sign-in completed player=${hash(identity.playerId).slice(0, 12)}`);
     res.json({ success: true, sessionToken, revision: user.revision,
       user: { playerId: user.playerId, displayName: user.displayName, saveData: JSON.stringify(user.save) } });
   }));
@@ -127,7 +134,7 @@ export function createApp({ players, verify, now = () => new Date(), trustedProx
   }));
   app.use((error, req, res, next) => {
     const status = error.status >= 400 && error.status < 500 ? error.status : 503;
-    if (status === 503) console.error('Player service request failed:', error.name); // No tokens or payloads in logs.
+    console.error(`[HTTP] ${req.method} ${req.path} failed with ${status}: ${error.message}`); // No tokens or payloads in logs.
     res.status(status).json({ success: false, error: status === 503 ? 'Cloud service is temporarily unavailable. Please retry.' : error.message });
   });
   return app;
