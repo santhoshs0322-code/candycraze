@@ -40,7 +40,9 @@ export function createApp({ players, verify, now = () => new Date(), trustedProx
     const stage = typeof req.body?.stage === 'string' && allowedStages.has(req.body.stage)
       ? req.body.stage : 'unknown';
     const appVersion = String(req.body?.appVersion ?? '').replace(/[^a-zA-Z0-9._+-]/g, '').slice(0, 40);
-    console.log(`[CLIENT-AUTH] stage=${stage} appVersion=${appVersion || 'unknown'}`);
+    const detail = String(req.body?.detail ?? '').replace(/[^a-zA-Z0-9._+-]/g, '').slice(0, 60);
+    const packageName = String(req.body?.packageName ?? '').replace(/[^a-zA-Z0-9._]/g, '').slice(0, 100);
+    console.log(`[CLIENT-AUTH] stage=${stage} detail=${detail || 'none'} package=${packageName || 'unknown'} appVersion=${appVersion || 'unknown'}`);
     res.json({ ok: true });
   });
   async function session(body) {

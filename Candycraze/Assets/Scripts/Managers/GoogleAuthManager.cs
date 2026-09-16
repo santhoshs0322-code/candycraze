@@ -34,12 +34,13 @@ public class GoogleAuthManager : MonoBehaviour
 #if GPGS_PRESENT && UNITY_ANDROID && !UNITY_EDITOR
         try
         {
+            PlayGamesPlatform.DebugLogEnabled = true;
             PlayGamesPlatform.Activate().ManuallyAuthenticate(status =>
             {
                 if (current != operation) return;
                 if (status != SignInStatus.Success)
                 {
-                    ReportSignInStage("play-games-failed");
+                    ReportSignInStage("play-games-failed", status.ToString());
                     Debug.LogWarning("[GoogleAuth] Play Games authentication failed: " + status);
                     Fail(status == SignInStatus.Canceled
                         ? "Google Play Games sign-in was not completed. Please try again. Guest play is available."
@@ -90,19 +91,22 @@ public class GoogleAuthManager : MonoBehaviour
         Fail("Google sign-in is available in the installed Android app.");
 #endif
     }
-    private void ReportSignInStage(string stage)
+    private void ReportSignInStage(string stage, string detail = "")
     {
-        if (isActiveAndEnabled) StartCoroutine(SendSignInStage(stage));
+        if (isActiveAndEnabled) StartCoroutine(SendSignInStage(stage, detail));
     }
-    private IEnumerator SendSignInStage(string stage)
+    private IEnumerator SendSignInStage(string stage, string detail)
     {
         string backend = GoogleAuthConfig.Instance != null
             ? GoogleAuthConfig.Instance.backendUrl.TrimEnd('/')
             : "https://candycraze.onrender.com";
         string safeStage = stage.Replace("\\", "").Replace("\"", "");
+        string safeDetail = detail.Replace("\\", "").Replace("\"", "");
         string safeVersion = Application.version.Replace("\\", "").Replace("\"", "");
+        string safePackage = Application.identifier.Replace("\\", "").Replace("\"", "");
         byte[] body = System.Text.Encoding.UTF8.GetBytes(
-            "{\"stage\":\"" + safeStage + "\",\"appVersion\":\"" + safeVersion + "\"}");
+            "{\"stage\":\"" + safeStage + "\",\"detail\":\"" + safeDetail +
+            "\",\"packageName\":\"" + safePackage + "\",\"appVersion\":\"" + safeVersion + "\"}");
         using (var request = new UnityWebRequest(backend + "/api/diagnostics/signin-attempt", "POST"))
         {
             request.uploadHandler = new UploadHandlerRaw(body);
