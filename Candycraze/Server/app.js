@@ -23,7 +23,7 @@ export function createApp({ players, verify, now = () => new Date(), trustedProx
   });
   // Bounded, per-process abuse protection; use an edge rate limiter for multi-instance deployment.
   const attempts = new Map();
-  app.use(['/api/auth/play-games', '/api/billing'], (req, res, next) => {
+  app.use(['/api/auth/play-games', '/api/billing', '/api/diagnostics/signin-attempt'], (req, res, next) => {
     const time = Date.now();
     for (const [ip, entry] of attempts) if (time - entry.start > 60000) attempts.delete(ip);
     const ip = req.ip;
@@ -34,6 +34,15 @@ export function createApp({ players, verify, now = () => new Date(), trustedProx
     next();
   });
   const route = fn => (req, res, next) => Promise.resolve(fn(req, res)).catch(next);
+  app.post('/api/diagnostics/signin-attempt', (req, res) => {
+    const allowedStages = new Set(['button-clicked', 'play-games-success', 'play-games-failed',
+      'server-code-requested', 'server-code-missing', 'backend-signin-start']);
+    const stage = typeof req.body?.stage === 'string' && allowedStages.has(req.body.stage)
+      ? req.body.stage : 'unknown';
+    const appVersion = String(req.body?.appVersion ?? '').replace(/[^a-zA-Z0-9._+-]/g, '').slice(0, 40);
+    console.log(`[CLIENT-AUTH] stage=${stage} appVersion=${appVersion || 'unknown'}`);
+    res.json({ ok: true });
+  });
   async function session(body) {
     const token = body?.sessionToken;
     if (typeof token !== 'string' || !/^[a-f0-9]{64}$/.test(token)) throw reject('Please sign in again.', 401);

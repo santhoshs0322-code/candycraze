@@ -1,6 +1,8 @@
 using System;
+using System.Collections;
 using CandyCraze;
 using UnityEngine;
+using UnityEngine.Networking;
 #if GPGS_PRESENT && UNITY_ANDROID && !UNITY_EDITOR
 using GooglePlayGames;
 using GooglePlayGames.BasicApi;
@@ -25,6 +27,7 @@ public class GoogleAuthManager : MonoBehaviour
     public void SignInWithGoogle()
     {
         if (IsBusy || isAuthenticated) return;
+        ReportSignInStage("button-clicked");
         int current = ++operation;
         SetState(true, "Connecting to Google Play Games...");
         deadline = Time.realtimeSinceStartup + 100;
@@ -36,19 +39,28 @@ public class GoogleAuthManager : MonoBehaviour
                 if (current != operation) return;
                 if (status != SignInStatus.Success)
                 {
+                    ReportSignInStage("play-games-failed");
                     Debug.LogWarning("[GoogleAuth] Play Games authentication failed: " + status);
                     Fail(status == SignInStatus.Canceled
                         ? "Google Play Games sign-in was not completed. Please try again. Guest play is available."
                         : "Google Play Games could not sign in (" + status + "). Please contact support. Guest play is available.");
                     return;
                 }
+                ReportSignInStage("play-games-success");
                 try
                 {
                     SetState(true, "Restoring your saved adventure...");
+                    ReportSignInStage("server-code-requested");
                     PlayGamesPlatform.Instance.RequestServerSideAccess(false, code =>
                     {
                         if (current != operation) return;
-                        if (string.IsNullOrEmpty(code)) { Fail("No server authorization code. Check the Play Games web client setup."); return; }
+                        if (string.IsNullOrEmpty(code))
+                        {
+                            ReportSignInStage("server-code-missing");
+                            Fail("No server authorization code. Check the Play Games web client setup.");
+                            return;
+                        }
+                        ReportSignInStage("backend-signin-start");
                         if (CloudSaveManager.Instance == null) new GameObject("CloudSaveManager").AddComponent<CloudSaveManager>();
                         CloudSaveManager.Instance.SignInAndRestore(code, (success, message) =>
                         {
@@ -62,13 +74,45 @@ public class GoogleAuthManager : MonoBehaviour
                         });
                     });
                 }
-                catch (Exception) { Fail("Unable to request cloud access. Please try again."); }
+                catch (Exception exception)
+                {
+                    Debug.LogException(exception);
+                    Fail("Unable to request cloud access: " + exception.Message);
+                }
             });
         }
-        catch (Exception) { Fail("Google Play Games could not start. Please try again."); }
+        catch (Exception exception)
+        {
+            Debug.LogException(exception);
+            Fail("Google Play Games could not start: " + exception.Message);
+        }
 #else
         Fail("Google sign-in is available in the installed Android app.");
 #endif
+    }
+    private void ReportSignInStage(string stage)
+    {
+        if (isActiveAndEnabled) StartCoroutine(SendSignInStage(stage));
+    }
+    private IEnumerator SendSignInStage(string stage)
+    {
+        string backend = GoogleAuthConfig.Instance != null
+            ? GoogleAuthConfig.Instance.backendUrl.TrimEnd('/')
+            : "https://candycraze.onrender.com";
+        string safeStage = stage.Replace("\\", "").Replace("\"", "");
+        string safeVersion = Application.version.Replace("\\", "").Replace("\"", "");
+        byte[] body = System.Text.Encoding.UTF8.GetBytes(
+            "{\"stage\":\"" + safeStage + "\",\"appVersion\":\"" + safeVersion + "\"}");
+        using (var request = new UnityWebRequest(backend + "/api/diagnostics/signin-attempt", "POST"))
+        {
+            request.uploadHandler = new UploadHandlerRaw(body);
+            request.downloadHandler = new DownloadHandlerBuffer();
+            request.SetRequestHeader("Content-Type", "application/json");
+            request.timeout = 15;
+            yield return request.SendWebRequest();
+            if (request.result != UnityWebRequest.Result.Success)
+                Debug.LogWarning("[GoogleAuth] Backend diagnostic did not arrive: " + request.error);
+        }
     }
     public void SignOut()
     {
