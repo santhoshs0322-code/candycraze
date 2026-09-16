@@ -18,7 +18,7 @@ public final class CandyBilling implements PurchasesUpdatedListener {
         this.activity = activity;
         client = BillingClient.newBuilder(activity).setListener(this)
             .enablePendingPurchases(PendingPurchasesParams.newBuilder().enableOneTimeProducts().build())
-            .enableAutoServiceReconnection().build();
+            .build();
     }
     public static void initialize() {
         UnityPlayer.currentActivity.runOnUiThread(() -> {
@@ -66,13 +66,16 @@ public final class CandyBilling implements PurchasesUpdatedListener {
                 for (ProductDetails product : response.getProductDetailsList()) {
                     List<ProductDetails.OneTimePurchaseOfferDetails> options = product.getOneTimePurchaseOfferDetailsList();
                     if (options == null) continue;
+                    ProductDetails.OneTimePurchaseOfferDetails selected = null;
                     for (ProductDetails.OneTimePurchaseOfferDetails option : options) {
-                        if (!"standard-buy".equals(option.getPurchaseOptionId()) ||
-                            (option.getOfferId() != null && !option.getOfferId().isEmpty())) continue;
+                        if (option.getOfferId() != null && !option.getOfferId().isEmpty()) continue;
+                        if (selected == null || "standard-buy".equals(option.getPurchaseOptionId())) selected = option;
+                        if ("standard-buy".equals(option.getPurchaseOptionId())) break;
+                    }
+                    if (selected != null) {
                         products.put(product.getProductId(), product);
-                        offers.put(product.getProductId(), option.getOfferToken());
-                        send("price", product.getProductId(), option.getFormattedPrice(), "");
-                        break;
+                        offers.put(product.getProductId(), selected.getOfferToken());
+                        send("price", product.getProductId(), selected.getFormattedPrice(), "");
                     }
                 }
                 send("ready", "", "", "");

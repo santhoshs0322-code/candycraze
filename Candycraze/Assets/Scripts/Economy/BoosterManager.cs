@@ -100,6 +100,7 @@ namespace CandyCraze
 
             // Others wait for player to tap a gem
             ActiveBooster = type;
+            _board.SetBoosterTargetsHighlighted(true);
             OnBoosterActivated.Invoke(type);
             Debug.Log($"[Booster] Waiting for tap: {type}");
             return true;
@@ -107,6 +108,7 @@ namespace CandyCraze
 
         public void Cancel()
         {
+            _board?.SetBoosterTargetsHighlighted(false);
             ActiveBooster = null;
             OnBoosterCancelled.Invoke();
         }
@@ -118,6 +120,7 @@ namespace CandyCraze
 
             BoosterType type = ActiveBooster.Value;
             if (!_board.ApplyBooster(type, gem)) return;
+            _board.SetBoosterTargetsHighlighted(false);
             ActiveBooster = null;
             DeductOne(type);
 

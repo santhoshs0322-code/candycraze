@@ -252,6 +252,18 @@ namespace CandyCraze
             }
         }
 
+        public void SetBoosterTargetHint(bool on)
+        {
+            transform.localScale = on ? _baseScale * 1.06f : _baseScale;
+            if (_highlightSr != null) _highlightSr.color = on
+                ? new Color(1f, .92f, .35f, .42f) : new Color(1f, 1f, 1f, 0f);
+            if (_glowSr != null)
+            {
+                Color color = _def != null ? _def.GemColor : Color.white;
+                _glowSr.color = new Color(color.r, color.g, color.b, on ? .58f : 0f);
+            }
+        }
+
         // ── Movement ─────────────────────────────────────────
 
         public void MoveTo(Vector3 target, float duration, System.Action onDone = null)

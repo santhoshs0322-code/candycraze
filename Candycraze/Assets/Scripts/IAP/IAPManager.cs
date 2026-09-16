@@ -85,7 +85,10 @@ namespace CandyCraze
             {
                 case "catalog": prices.Clear(); break;
                 case "price": prices[item.productId] = item.value; break;
-                case "ready": if (!IsBusy && !VerificationInProgress) SetStatus("Choose a crystal pack. Prices are provided by Google Play."); break;
+                case "ready":
+                    if (!IsBusy && !VerificationInProgress) SetStatus("Choose a crystal pack. Prices are provided by Google Play.");
+                    StartCoroutine(ReportCatalog());
+                    break;
                 case "disconnected": prices.Clear(); Failed(item.value); break;
                 case "error": case "cancelled": case "pending": Failed(item.value); break;
                 case "purchase":
@@ -124,6 +127,21 @@ namespace CandyCraze
             CloudSaveManager.Instance?.UploadCurrentSave(); OnChanged?.Invoke();
         }
         private void PersistPending() { PlayerPrefs.SetString(PendingKey, JsonUtility.ToJson(pending)); PlayerPrefs.Save(); }
+        private IEnumerator ReportCatalog()
+        {
+            var available = new List<string>(); var missing = new List<string>();
+            foreach (string id in IAPProductIDs.All) (prices.ContainsKey(id) ? available : missing).Add(id);
+            string json = "{\"available\":[\"" + string.Join("\",\"", available) + "\"],\"missing\":[\"" +
+                string.Join("\",\"", missing) + "\"]}";
+            using (var request = new UnityEngine.Networking.UnityWebRequest(
+                "https://candycraze.onrender.com/api/diagnostics/billing-catalog", "POST"))
+            {
+                request.uploadHandler = new UnityEngine.Networking.UploadHandlerRaw(Encoding.UTF8.GetBytes(json));
+                request.downloadHandler = new UnityEngine.Networking.DownloadHandlerBuffer();
+                request.SetRequestHeader("Content-Type", "application/json"); request.timeout = 15;
+                yield return request.SendWebRequest();
+            }
+        }
         private void Failed(string message) { IsBusy = false; SetStatus(message); var callback = onFailure; onFailure = null; onSuccess = null; callback?.Invoke(message); }
         private void SetStatus(string message) { StatusMessage = message; OnChanged?.Invoke(); }
         private void OnApplicationFocus(bool focus) { if (focus && !IsBusy) RestorePurchases(); }

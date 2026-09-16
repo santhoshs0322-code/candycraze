@@ -91,7 +91,8 @@ namespace CandyCraze
                         if (manager == null) return;
                         if (manager.ActiveBooster == type) { manager.Cancel(); _boosterHint.text="Booster cancelled"; }
                         else if (manager.TryActivate(type)) _boosterHint.text=manager.ActiveBooster.HasValue?"Tap a candy • tap booster again to cancel":"Sweet boost!";
-                        else _boosterHint.text="Earn more boosters from daily treats.";
+                        else if (manager.GetCount(type) <= 0) ShowBoosterPurchase(type);
+                        else _boosterHint.text="Wait until the board finishes moving.";
                     },20);
                 var caption=button.GetComponentInChildren<Text>();
                 caption.gameObject.SetActive(false);
@@ -119,6 +120,35 @@ namespace CandyCraze
             CandyTheme.Button(pause,"CANDY POWER GUIDE",.1f,.20f,.9f,.34f,CandyTheme.Purple,() => CandyPowerGuide.Show(root),30);
             CandyTheme.Button(pause,"BACK TO MAP",.1f,.03f,.9f,.17f,CandyTheme.Mint,OnQuitToMapPressed);
             HideAllPanels();
+        }
+
+        private void ShowBoosterPurchase(BoosterType type)
+        {
+            string[] names = { "Hammer", "Blast", "Shuffle", "+5 Moves", "Color Blast" };
+            int[] costs = { 30, 40, 25, 50, 45 };
+            int index = (int)type, cost = costs[index];
+            var hud = GameObject.Find("PremiumGameHUD");
+            if (hud == null) return;
+            var card = CandyTheme.Modal(hud.transform, names[index] + " booster", out var overlay);
+            int crystals = SaveManager.Instance != null ? SaveManager.Instance.Data.Coins : 0;
+            var message = CandyTheme.Label(card,
+                "You have none left.\nBuy 1 for " + cost + " crystals?\nBalance: " + crystals,
+                .08f,.48f,.92f,.72f,30);
+            CandyTheme.Button(card,"BUY 1 - " + cost,.1f,.25f,.9f,.42f,CandyTheme.Pink,() => {
+                if (SaveManager.Instance == null || SaveManager.Instance.Data.Coins < cost)
+                { message.text = "Not enough crystals.\nBuy a crystal pack from the home shop."; return; }
+                switch (type)
+                {
+                    case BoosterType.Hammer: ShopManager.Instance?.BuyHammer(); break;
+                    case BoosterType.RowBlast: ShopManager.Instance?.BuyRowBlast(); break;
+                    case BoosterType.Shuffle: ShopManager.Instance?.BuyShuffle(); break;
+                    case BoosterType.ExtraMoves: ShopManager.Instance?.BuyExtraMoves(); break;
+                    case BoosterType.ColorBlast: ShopManager.Instance?.BuyColorBlast(); break;
+                }
+                _boosterHint.text = names[index] + " added!";
+                Destroy(overlay);
+            },30);
+            CandyTheme.Button(card,"NOT NOW",.1f,.07f,.9f,.21f,CandyTheme.Purple,() => Destroy(overlay),26);
         }
 
         // ────────────────────────────────────────────────────

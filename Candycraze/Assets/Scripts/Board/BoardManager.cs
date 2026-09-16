@@ -107,6 +107,12 @@ namespace CandyCraze
 
         public bool IsBusy => _isBusy;
 
+        public void SetBoosterTargetsHighlighted(bool highlighted)
+        {
+            if (_grid == null) return;
+            foreach (var gem in _grid) if (gem != null) gem.SetBoosterTargetHint(highlighted);
+        }
+
         public bool ApplyBooster(BoosterType type, GemView target)
         {
             if(_isBusy || target==null || GetGem(target.Row,target.Col)!=target) return false;

@@ -23,7 +23,7 @@ export function createApp({ players, verify, now = () => new Date(), trustedProx
   });
   // Bounded, per-process abuse protection; use an edge rate limiter for multi-instance deployment.
   const attempts = new Map();
-  app.use(['/api/auth/play-games', '/api/billing', '/api/diagnostics/signin-attempt'], (req, res, next) => {
+  app.use(['/api/auth/play-games', '/api/billing', '/api/diagnostics'], (req, res, next) => {
     const time = Date.now();
     for (const [ip, entry] of attempts) if (time - entry.start > 60000) attempts.delete(ip);
     const ip = req.ip;
@@ -45,6 +45,13 @@ export function createApp({ players, verify, now = () => new Date(), trustedProx
     console.log(`[CLIENT-AUTH] stage=${stage} detail=${detail || 'none'} package=${packageName || 'unknown'} appVersion=${appVersion || 'unknown'}`);
     res.json({ ok: true });
   });
+  app.post('/api/diagnostics/billing-catalog', (req, res) => {
+    const clean = values => Array.isArray(values) ? values.map(value =>
+      String(value).replace(/[^a-z0-9_.-]/g, '').slice(0, 40)).filter(Boolean).slice(0, 10) : [];
+    const available = clean(req.body?.available), missing = clean(req.body?.missing);
+    console.log(`[CLIENT-BILLING] available=${available.join(',') || 'none'} missing=${missing.join(',') || 'none'}`);
+    res.json({ ok: true });
+  });
   async function session(body) {
     const token = body?.sessionToken;
     if (typeof token !== 'string' || !/^[a-f0-9]{64}$/.test(token)) throw reject('Please sign in again.', 401);
@@ -56,8 +63,7 @@ export function createApp({ players, verify, now = () => new Date(), trustedProx
   app.get('/health', (req, res) => res.json({ ok: true }));
   app.post('/api/billing/account', route(async (req, res) => {
     const { user } = await session(req.body);
-    if (!process.env.PLAY_SERVICE_ACCOUNT_EMAIL || !process.env.PLAY_SERVICE_ACCOUNT_PRIVATE_KEY)
-      throw reject('Purchases are not available yet. Please try later.', 503);
+    console.log(`[BILLING] checkout account requested player=${hash(user.playerId).slice(0, 12)}`);
     res.json({ success: true, accountId: billingAccountId(user.playerId) });
   }));
   app.post('/api/billing/verify', route(async (req, res) => {
