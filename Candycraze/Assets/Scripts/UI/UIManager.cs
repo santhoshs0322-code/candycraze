@@ -54,10 +54,12 @@ namespace CandyCraze
         private readonly System.Collections.Generic.List<Text> _goalLabels=new System.Collections.Generic.List<Text>();
         private readonly Text[] _premiumBoosterCounts = new Text[5];
         private readonly Button[] _premiumBoosters = new Button[5];
+        private RectTransform _premiumRoot;
 
         private void BuildPremiumUI()
         {
             var root = CandyTheme.Page("PremiumGameHUD", false);
+            _premiumRoot = root;
             var background = GameObject.Find("GameBG");
             if (background != null && background.TryGetComponent<SpriteRenderer>(out var backdrop))
             {
@@ -127,9 +129,8 @@ namespace CandyCraze
             string[] names = { "Hammer", "Blast", "Shuffle", "+5 Moves", "Color Blast" };
             int[] costs = { 30, 40, 25, 50, 45 };
             int index = (int)type, cost = costs[index];
-            var hud = GameObject.Find("PremiumGameHUD");
-            if (hud == null) return;
-            var card = CandyTheme.Modal(hud.transform, names[index] + " booster", out var overlay);
+            if (_premiumRoot == null) return;
+            var card = CandyTheme.Modal(_premiumRoot, names[index] + " booster", out var overlay);
             int crystals = SaveManager.Instance != null ? SaveManager.Instance.Data.Coins : 0;
             var message = CandyTheme.Label(card,
                 "You have none left.\nBuy 1 for " + cost + " crystals?\nBalance: " + crystals,

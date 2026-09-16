@@ -28,11 +28,18 @@ async function google(path, method = 'GET') {
   const response = await fetch('https://androidpublisher.googleapis.com/androidpublisher/v3/applications/' +
     encodeURIComponent(packageName) + path, { method,
     headers: { Authorization: 'Bearer ' + await accessToken() }, signal: AbortSignal.timeout(15000) });
+  const text = await response.text();
   if (!response.ok) {
     if (response.status === 401) { cachedToken = null; expiresAt = 0; }
-    throw new Error('Play purchase API request failed: ' + response.status);
+    let reason = '';
+    try {
+      const body = JSON.parse(text);
+      reason = String(body?.error?.message || body?.error?.status || '').replace(/[\r\n]/g, ' ').slice(0, 300);
+    } catch { }
+    console.error(`[PLAY-API] request rejected status=${response.status} reason=${reason || 'not provided'}`);
+    throw new Error('Play purchase API request failed: ' + response.status + (reason ? ' - ' + reason : ''));
   }
-  return method === 'GET' ? response.json() : null;
+  return method === 'GET' && text ? JSON.parse(text) : null;
 }
 export async function verifyPurchase(productId, token, playerId) {
   const purchase = await google('/purchases/productsv2/tokens/' + encodeURIComponent(token));
