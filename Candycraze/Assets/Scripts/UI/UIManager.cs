@@ -135,9 +135,11 @@ namespace CandyCraze
             var message = CandyTheme.Label(card,
                 "You have none left.\nBuy 1 for " + cost + " crystals?\nBalance: " + crystals,
                 .08f,.48f,.92f,.72f,30);
-            CandyTheme.Button(card,"BUY 1 - " + cost,.1f,.25f,.9f,.42f,CandyTheme.Pink,() => {
+            CandyTheme.Button(card,"BUY & USE - " + cost,.1f,.34f,.9f,.47f,CandyTheme.Pink,() => {
                 if (SaveManager.Instance == null || SaveManager.Instance.Data.Coins < cost)
-                { message.text = "Not enough crystals.\nBuy a crystal pack from the home shop."; return; }
+                { message.text = "Not enough crystals.\nChoose GET CRYSTALS below."; return; }
+                var manager = BoosterManager.Instance;
+                int before = manager != null ? manager.GetCount(type) : 0;
                 switch (type)
                 {
                     case BoosterType.Hammer: ShopManager.Instance?.BuyHammer(); break;
@@ -146,10 +148,36 @@ namespace CandyCraze
                     case BoosterType.ExtraMoves: ShopManager.Instance?.BuyExtraMoves(); break;
                     case BoosterType.ColorBlast: ShopManager.Instance?.BuyColorBlast(); break;
                 }
-                _boosterHint.text = names[index] + " added!";
+                if (manager == null || manager.GetCount(type) <= before)
+                { message.text = "Could not buy this booster. Please retry."; return; }
                 Destroy(overlay);
-            },30);
-            CandyTheme.Button(card,"NOT NOW",.1f,.07f,.9f,.21f,CandyTheme.Purple,() => Destroy(overlay),26);
+                if (manager.TryActivate(type))
+                    _boosterHint.text = manager.ActiveBooster.HasValue
+                        ? "Tap a candy to use " + names[index] : names[index] + " used!";
+                else _boosterHint.text = names[index] + " added. Tap it when the board is ready.";
+            },28);
+            CandyTheme.Button(card,"GET CRYSTALS",.1f,.19f,.9f,.32f,CandyTheme.Mint,() => {
+                Destroy(overlay); ShowInGameCrystalShop(type);
+            },27);
+            CandyTheme.Button(card,"NOT NOW",.1f,.045f,.9f,.17f,CandyTheme.Purple,() => Destroy(overlay),24);
+        }
+
+        private void ShowInGameCrystalShop(BoosterType returnToBooster)
+        {
+            if (_premiumRoot == null) return;
+            var card = CandyTheme.Modal(_premiumRoot,"Get crystals",out var shopOverlay);
+            var buttons = new Button[3];
+            for (int i = 0; i < buttons.Length; i++)
+                buttons[i] = CandyTheme.Button(card,"Loading...",.08f,.64f-i*.15f,.92f,.77f-i*.15f,
+                    CandyTheme.Purple,() => { },27);
+            var message = CandyTheme.Label(card,"",.07f,.19f,.93f,.33f,22);
+            var restore = CandyTheme.Button(card,"RESTORE / REFRESH",.08f,.105f,.92f,.19f,
+                CandyTheme.Mint,() => { },23);
+            CandyTheme.Button(card,"CLOSE",.08f,.015f,.92f,.10f,CandyTheme.Pink,() => Destroy(shopOverlay),23);
+            shopOverlay.AddComponent<CrystalShopView>().Configure(buttons,message,restore,_ => {
+                if (shopOverlay != null) Destroy(shopOverlay);
+                ShowBoosterPurchase(returnToBooster);
+            });
         }
 
         // ────────────────────────────────────────────────────

@@ -47,6 +47,7 @@ namespace CandyCraze
             }
 
             if (IAPManager.Instance == null) new GameObject("IAPManager").AddComponent<IAPManager>();
+            if (ShopManager.Instance == null) new GameObject("ShopManager").AddComponent<ShopManager>();
 
             // Initialise DailyRewardManager
             if (DailyRewardManager.Instance == null)

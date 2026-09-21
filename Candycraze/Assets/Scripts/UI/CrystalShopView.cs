@@ -1,3 +1,4 @@
+using System;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -9,13 +10,13 @@ namespace CandyCraze
         private Text status;
         private float refreshAt;
         private readonly string[] quantities = { "500", "1,200", "2,800" };
-        public void Configure(Button[] packs, Text message, Button restore)
+        public void Configure(Button[] packs, Text message, Button restore, Action<string> purchased = null)
         {
             buttons = packs; status = message;
             for (int i = 0; i < buttons.Length; i++)
             {
                 string id = IAPProductIDs.All[i];
-                buttons[i].onClick.AddListener(() => IAPManager.Instance?.BuyProduct(id, _ => { }));
+                buttons[i].onClick.AddListener(() => IAPManager.Instance?.BuyProduct(id, purchased ?? (_ => { })));
             }
             restore.onClick.AddListener(() => IAPManager.Instance?.RestorePurchases());
         }
