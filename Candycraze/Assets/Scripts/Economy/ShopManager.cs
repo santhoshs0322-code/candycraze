@@ -40,44 +40,32 @@ namespace CandyCraze
         }
 
         // ── Boosters — no ref, direct field access ────────────
-        public void BuyHammer()
-        {
-            if (!CanAfford(30)) return;
-            SaveManager.Instance.Data.Coins -= 30;
-            SaveManager.Instance.Data.BoosterHammer++;
-            Finish("Hammer");
-        }
+        public void BuyHammer() => BuyBoosters(BoosterType.Hammer, 1);
+        public void BuyRowBlast() => BuyBoosters(BoosterType.RowBlast, 1);
+        public void BuyShuffle() => BuyBoosters(BoosterType.Shuffle, 1);
+        public void BuyExtraMoves() => BuyBoosters(BoosterType.ExtraMoves, 1);
+        public void BuyColorBlast() => BuyBoosters(BoosterType.ColorBlast, 1);
 
-        public void BuyRowBlast()
+        public bool BuyBoosters(BoosterType type, int quantity)
         {
-            if (!CanAfford(40)) return;
-            SaveManager.Instance.Data.Coins -= 40;
-            SaveManager.Instance.Data.BoosterRowBlast++;
-            Finish("Row Blast");
-        }
-
-        public void BuyShuffle()
-        {
-            if (!CanAfford(25)) return;
-            SaveManager.Instance.Data.Coins -= 25;
-            SaveManager.Instance.Data.BoosterShuffle++;
-            Finish("Shuffle");
-        }
-
-        public void BuyExtraMoves()
-        {
-            if (!CanAfford(50)) return;
-            SaveManager.Instance.Data.Coins -= 50;
-            SaveManager.Instance.Data.BoosterExtraMoves++;
-            Finish("Extra Moves");
-        }
-
-        public void BuyColorBlast()
-        {
-            if (!CanAfford(45)) return;
-            SaveManager.Instance.Data.Coins -= 45;
-            SaveManager.Instance.Data.BoosterColorBlast++;
-            Finish("Color Blast");
+            if (SaveManager.Instance == null || quantity < 1 || quantity > 20 ||
+                (int)type < 0 || (int)type >= 5) return false;
+            int[] unitCosts = { 30, 40, 25, 50, 45 };
+            int cost = unitCosts[(int)type] * quantity;
+            if (!CanAfford(cost)) return false;
+            var data = SaveManager.Instance.Data;
+            data.Coins -= cost;
+            switch (type)
+            {
+                case BoosterType.Hammer: data.BoosterHammer += quantity; break;
+                case BoosterType.RowBlast: data.BoosterRowBlast += quantity; break;
+                case BoosterType.Shuffle: data.BoosterShuffle += quantity; break;
+                case BoosterType.ExtraMoves: data.BoosterExtraMoves += quantity; break;
+                case BoosterType.ColorBlast: data.BoosterColorBlast += quantity; break;
+                default: return false;
+            }
+            Finish(quantity + "x " + type);
+            return true;
         }
 
         // ── Private ──────────────────────────────────────────

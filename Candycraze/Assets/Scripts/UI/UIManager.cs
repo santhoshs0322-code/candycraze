@@ -132,34 +132,34 @@ namespace CandyCraze
             if (_premiumRoot == null) return;
             var card = CandyTheme.Modal(_premiumRoot, names[index] + " booster", out var overlay);
             int crystals = SaveManager.Instance != null ? SaveManager.Instance.Data.Coins : 0;
+            int quantity = 1;
             var message = CandyTheme.Label(card,
-                "You have none left.\nBuy 1 for " + cost + " crystals?\nBalance: " + crystals,
-                .08f,.48f,.92f,.72f,30);
-            CandyTheme.Button(card,"BUY & USE - " + cost,.1f,.34f,.9f,.47f,CandyTheme.Pink,() => {
-                if (SaveManager.Instance == null || SaveManager.Instance.Data.Coins < cost)
-                { message.text = "Not enough crystals.\nChoose GET CRYSTALS below."; return; }
-                var manager = BoosterManager.Instance;
-                int before = manager != null ? manager.GetCount(type) : 0;
-                switch (type)
-                {
-                    case BoosterType.Hammer: ShopManager.Instance?.BuyHammer(); break;
-                    case BoosterType.RowBlast: ShopManager.Instance?.BuyRowBlast(); break;
-                    case BoosterType.Shuffle: ShopManager.Instance?.BuyShuffle(); break;
-                    case BoosterType.ExtraMoves: ShopManager.Instance?.BuyExtraMoves(); break;
-                    case BoosterType.ColorBlast: ShopManager.Instance?.BuyColorBlast(); break;
-                }
-                if (manager == null || manager.GetCount(type) <= before)
-                { message.text = "Could not buy this booster. Please retry."; return; }
+                "Choose quantity\nBalance: " + crystals + " crystals",
+                .08f,.61f,.92f,.73f,28);
+            var quantityText = CandyTheme.Label(card,"x1",.30f,.47f,.70f,.60f,42);
+            Text buyLabel = null;
+            CandyTheme.Button(card,"-",.10f,.47f,.28f,.60f,CandyTheme.Purple,() => {
+                quantity = Mathf.Max(1, quantity - 1); quantityText.text = "x" + quantity;
+                if (buyLabel != null) buyLabel.text = "BUY - " + (cost * quantity);
+            },34);
+            CandyTheme.Button(card,"+",.72f,.47f,.90f,.60f,CandyTheme.Purple,() => {
+                quantity = Mathf.Min(20, quantity + 1); quantityText.text = "x" + quantity;
+                if (buyLabel != null) buyLabel.text = "BUY - " + (cost * quantity);
+            },34);
+            var buy = CandyTheme.Button(card,"BUY - " + cost,.1f,.31f,.9f,.44f,CandyTheme.Pink,() => {
+                int total = cost * quantity;
+                if (SaveManager.Instance == null || SaveManager.Instance.Data.Coins < total)
+                { message.text = "Need " + total + " crystals.\nChoose GET CRYSTALS below."; return; }
+                if (ShopManager.Instance == null || !ShopManager.Instance.BuyBoosters(type, quantity))
+                { message.text = "Could not complete purchase. Please retry."; return; }
                 Destroy(overlay);
-                if (manager.TryActivate(type))
-                    _boosterHint.text = manager.ActiveBooster.HasValue
-                        ? "Tap a candy to use " + names[index] : names[index] + " used!";
-                else _boosterHint.text = names[index] + " added. Tap it when the board is ready.";
+                _boosterHint.text = quantity + "x " + names[index] + " added. Tap the booster to use one.";
             },28);
-            CandyTheme.Button(card,"GET CRYSTALS",.1f,.19f,.9f,.32f,CandyTheme.Mint,() => {
+            buyLabel = buy.GetComponentInChildren<Text>();
+            CandyTheme.Button(card,"GET CRYSTALS",.1f,.16f,.9f,.28f,CandyTheme.Mint,() => {
                 Destroy(overlay); ShowInGameCrystalShop(type);
             },27);
-            CandyTheme.Button(card,"NOT NOW",.1f,.045f,.9f,.17f,CandyTheme.Purple,() => Destroy(overlay),24);
+            CandyTheme.Button(card,"NOT NOW",.1f,.025f,.9f,.13f,CandyTheme.Purple,() => Destroy(overlay),24);
         }
 
         private void ShowInGameCrystalShop(BoosterType returnToBooster)
