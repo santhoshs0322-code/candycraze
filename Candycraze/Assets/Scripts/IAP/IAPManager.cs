@@ -81,6 +81,8 @@ namespace CandyCraze
             BillingEvent item;
             try { item = JsonUtility.FromJson<BillingEvent>(json); } catch (Exception) { return; }
             if (item == null) return;
+            if (item.type != "catalog" && item.type != "price")
+                StartCoroutine(ReportBillingEvent(item));
             switch (item.type)
             {
                 case "catalog": prices.Clear(); break;
@@ -93,6 +95,11 @@ namespace CandyCraze
                 case "error": case "cancelled": case "pending": Failed(item.value); break;
                 case "purchase":
                     if (Array.IndexOf(IAPProductIDs.All, item.productId) < 0 || string.IsNullOrEmpty(item.value)) return;
+                    // A purchase launched by this signed-in checkout can occasionally omit
+                    // AccountIdentifiers in the immediate BillingClient callback. Bind only
+                    // that active checkout; restored purchases remain account-restricted.
+                    if (string.IsNullOrEmpty(item.accountId) && IsBusy && CloudSaveManager.Instance?.IsSignedIn == true)
+                        item.accountId = AccountHash(CloudSaveManager.Instance.PlayerId);
                     if (!pending.items.Exists(p => p.value == item.value)) { pending.items.Add(item); PersistPending(); }
                     IsBusy = false; retryAt = 0; SetStatus("Confirming your purchase...");
                     break;
@@ -135,6 +142,23 @@ namespace CandyCraze
                 string.Join("\",\"", missing) + "\"]}";
             using (var request = new UnityEngine.Networking.UnityWebRequest(
                 "https://candycraze.onrender.com/api/diagnostics/billing-catalog", "POST"))
+            {
+                request.uploadHandler = new UnityEngine.Networking.UploadHandlerRaw(Encoding.UTF8.GetBytes(json));
+                request.downloadHandler = new UnityEngine.Networking.DownloadHandlerBuffer();
+                request.SetRequestHeader("Content-Type", "application/json"); request.timeout = 15;
+                yield return request.SendWebRequest();
+            }
+        }
+        private IEnumerator ReportBillingEvent(BillingEvent item)
+        {
+            string safeEvent = (item.type ?? "").Replace("\\", "").Replace("\"", "");
+            string safeProduct = (item.productId ?? "").Replace("\\", "").Replace("\"", "");
+            string detail = item.type == "purchase" ? "purchase callback received" : (item.value ?? "");
+            detail = detail.Replace("\\", "").Replace("\"", "").Replace("\r", " ").Replace("\n", " ");
+            string json = "{\"event\":\"" + safeEvent + "\",\"productId\":\"" + safeProduct +
+                "\",\"detail\":\"" + detail + "\"}";
+            using (var request = new UnityEngine.Networking.UnityWebRequest(
+                "https://candycraze.onrender.com/api/diagnostics/billing-event", "POST"))
             {
                 request.uploadHandler = new UnityEngine.Networking.UploadHandlerRaw(Encoding.UTF8.GetBytes(json));
                 request.downloadHandler = new UnityEngine.Networking.DownloadHandlerBuffer();

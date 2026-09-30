@@ -43,7 +43,7 @@ public final class CandyBilling implements PurchasesUpdatedListener {
                 connecting = false;
                 if (result.getResponseCode() == BillingClient.BillingResponseCode.OK) {
                     loadProducts(); queryOwned();
-                } else send("error", "", "Google Play billing unavailable. Please retry.", "");
+                } else send("error", "", "Billing setup failed (" + result.getResponseCode() + "): " + result.getDebugMessage(), "");
             }
             public void onBillingServiceDisconnected() {
                 connecting = false;
@@ -95,7 +95,7 @@ public final class CandyBilling implements PurchasesUpdatedListener {
                     .setObfuscatedAccountId(accountId).build());
             if (result.getResponseCode() != BillingClient.BillingResponseCode.OK) {
                 if (result.getResponseCode() == BillingClient.BillingResponseCode.ITEM_ALREADY_OWNED) instance.queryOwned();
-                send("error", productId, "Checkout could not open. Please restore purchases and retry.", "");
+                send("error", productId, "Checkout failed (" + result.getResponseCode() + "): " + result.getDebugMessage(), "");
             }
         });
     }
@@ -112,7 +112,7 @@ public final class CandyBilling implements PurchasesUpdatedListener {
             for (Purchase purchase : purchases) report(purchase);
         } else if (result.getResponseCode() == BillingClient.BillingResponseCode.USER_CANCELED) {
             send("cancelled", "", "Purchase cancelled. No crystals added.", "");
-        } else send("error", "", "Payment could not complete. Please retry or restore purchases.", "");
+        } else send("error", "", "Payment failed (" + result.getResponseCode() + "): " + result.getDebugMessage(), "");
     }
     private void report(Purchase purchase) {
         if (purchase.getPurchaseState() == Purchase.PurchaseState.PENDING) {

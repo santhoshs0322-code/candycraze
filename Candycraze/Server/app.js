@@ -52,6 +52,14 @@ export function createApp({ players, verify, now = () => new Date(), trustedProx
     console.log(`[CLIENT-BILLING] available=${available.join(',') || 'none'} missing=${missing.join(',') || 'none'}`);
     res.json({ ok: true });
   });
+  app.post('/api/diagnostics/billing-event', (req, res) => {
+    const allowed = new Set(['ready', 'disconnected', 'error', 'cancelled', 'pending', 'purchase']);
+    const event = allowed.has(req.body?.event) ? req.body.event : 'unknown';
+    const product = String(req.body?.productId ?? '').replace(/[^a-z0-9_.-]/g, '').slice(0, 40) || 'none';
+    const detail = String(req.body?.detail ?? '').replace(/[\r\n]/g, ' ').replace(/[^a-zA-Z0-9 ._:+()-]/g, '').slice(0, 180) || 'none';
+    console.log(`[CLIENT-BILLING] event=${event} product=${product} detail=${detail}`);
+    res.json({ ok: true });
+  });
   async function session(body) {
     const token = body?.sessionToken;
     if (typeof token !== 'string' || !/^[a-f0-9]{64}$/.test(token)) throw reject('Please sign in again.', 401);
