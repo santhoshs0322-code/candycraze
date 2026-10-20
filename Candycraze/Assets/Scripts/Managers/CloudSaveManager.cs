@@ -7,7 +7,7 @@ using UnityEngine.Networking;
 public class CloudSaveManager : MonoBehaviour
 {
     public static CloudSaveManager Instance { get; private set; }
-    [SerializeField] private string backendUrl = "https://candycraze.onrender.com";
+    [SerializeField] private string backendUrl = "http://13.206.105.80";
     private string sessionToken;
     private bool syncing, conflict;
     private float nextRetry;

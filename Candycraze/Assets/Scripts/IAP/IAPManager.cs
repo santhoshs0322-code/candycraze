@@ -141,7 +141,7 @@ namespace CandyCraze
             string json = "{\"available\":[\"" + string.Join("\",\"", available) + "\"],\"missing\":[\"" +
                 string.Join("\",\"", missing) + "\"]}";
             using (var request = new UnityEngine.Networking.UnityWebRequest(
-                "https://candycraze.onrender.com/api/diagnostics/billing-catalog", "POST"))
+                "http://13.206.105.80/api/diagnostics/billing-catalog", "POST"))
             {
                 request.uploadHandler = new UnityEngine.Networking.UploadHandlerRaw(Encoding.UTF8.GetBytes(json));
                 request.downloadHandler = new UnityEngine.Networking.DownloadHandlerBuffer();
@@ -158,7 +158,7 @@ namespace CandyCraze
             string json = "{\"event\":\"" + safeEvent + "\",\"productId\":\"" + safeProduct +
                 "\",\"detail\":\"" + detail + "\"}";
             using (var request = new UnityEngine.Networking.UnityWebRequest(
-                "https://candycraze.onrender.com/api/diagnostics/billing-event", "POST"))
+                "http://13.206.105.80/api/diagnostics/billing-event", "POST"))
             {
                 request.uploadHandler = new UnityEngine.Networking.UploadHandlerRaw(Encoding.UTF8.GetBytes(json));
                 request.downloadHandler = new UnityEngine.Networking.DownloadHandlerBuffer();

@@ -37,6 +37,7 @@ public class LoginUI : MonoBehaviour
             GoogleAuthManager.Instance.OnLoginSuccess += UpdateUI;
             GoogleAuthManager.Instance.OnLoginFailed += OnLoginFailed;
             GoogleAuthManager.Instance.OnLogoutSuccess += UpdateUI;
+            GoogleAuthManager.Instance.OnStateChanged += UpdateUI;
         }
 
         // Initial UI state
@@ -90,8 +91,9 @@ public class LoginUI : MonoBehaviour
     /// </summary>
     private void OnLoginFailed()
     {
-        if (statusText != null)
-            statusText.text = "Login failed. Try again.";
+        if (GoogleAuthManager.Instance == null) return;
+        Debug.LogError("[LoginUI] Google sign-in failed: " + GoogleAuthManager.Instance.StatusMessage);
+        UpdateUI();
     }
 
     /// <summary>
@@ -118,7 +120,7 @@ public class LoginUI : MonoBehaviour
         {
             statusText.text = isAuthenticated 
                 ? $"Logged in as {GoogleAuthManager.Instance.GetUserDisplayName()}" 
-                : "Not logged in";
+                : GoogleAuthManager.Instance.StatusMessage;
         }
 
         // Update network status color
@@ -145,6 +147,7 @@ public class LoginUI : MonoBehaviour
             GoogleAuthManager.Instance.OnLoginSuccess -= UpdateUI;
             GoogleAuthManager.Instance.OnLoginFailed -= OnLoginFailed;
             GoogleAuthManager.Instance.OnLogoutSuccess -= UpdateUI;
+            GoogleAuthManager.Instance.OnStateChanged -= UpdateUI;
         }
     }
 }

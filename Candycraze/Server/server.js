@@ -12,6 +12,8 @@ console.log(`[CONFIG] Play Billing verification: ${process.env.PLAY_SERVICE_ACCO
 console.log('[MONGODB] connecting...');
 
 const client = new MongoClient(process.env.MONGODB_URI, { serverSelectionTimeoutMS: 10000 });
+if ((process.env.MONGODB_DATABASE || 'candycraze') === 'monstermerge')
+  throw new Error('CandyCraze requires a separate database from Monster Merge');
 try {
   await client.connect();
   await client.db('admin').command({ ping: 1 });

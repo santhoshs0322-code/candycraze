@@ -14,7 +14,7 @@ public class GoogleAuthConfig : ScriptableObject
     [SerializeField] public string packageName = "com.gamixtv.Candycraze";
 
     [Header("Backend Configuration")]
-    [SerializeField] public string backendUrl = "https://candycraze.onrender.com";
+    [SerializeField] public string backendUrl = "http://13.206.105.80";
 
     [Header("Features")]
     [SerializeField] public bool enableCloudSave = true;

@@ -99,7 +99,7 @@ public class GoogleAuthManager : MonoBehaviour
     {
         string backend = GoogleAuthConfig.Instance != null
             ? GoogleAuthConfig.Instance.backendUrl.TrimEnd('/')
-            : "https://candycraze.onrender.com";
+            : "http://13.206.105.80";
         string safeStage = stage.Replace("\\", "").Replace("\"", "");
         string safeDetail = detail.Replace("\\", "").Replace("\"", "");
         string safeVersion = Application.version.Replace("\\", "").Replace("\"", "");
