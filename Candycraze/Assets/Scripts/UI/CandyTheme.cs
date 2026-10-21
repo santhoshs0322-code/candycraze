@@ -144,6 +144,12 @@ namespace CandyCraze
                 star.color = new Color(1, 1, 1, .6f);
             }
         }
+        public static CandyGlyph Icon(Transform parent, CandyGlyph.Kind kind, float x0, float y0, float x1, float y1, Color color)
+        {
+            var glyph = Rect(parent, kind.ToString(), x0, y0, x1, y1).gameObject.AddComponent<CandyGlyph>();
+            glyph.Shape = kind; glyph.color = color; glyph.raycastTarget = false;
+            return glyph;
+        }
         public static RectTransform Modal(Transform safe, string title, out GameObject overlay)
         {
             var shade = Rect(safe.parent, title + "Overlay", 0, 0, 1, 1).gameObject.AddComponent<Image>();
@@ -152,6 +158,58 @@ namespace CandyCraze
             Label(card.transform, title, .06f, .77f, .94f, .94f, 60);
             overlay = shade.gameObject;
             return card.rectTransform;
+        }
+    }
+    // Resolution-independent UI symbols with consistent proportions on narrow screens.
+    public class CandyGlyph : MaskableGraphic
+    {
+        public enum Kind { Crystal, Profile, Lock }
+        public Kind Shape;
+        protected override void OnPopulateMesh(VertexHelper vh)
+        {
+            vh.Clear();
+            var rect = rectTransform.rect;
+            float scale = Mathf.Min(rect.width,rect.height);
+            Vector2 center = rect.center;
+            System.Action<Vector2,Vector2,Vector2,Color> triangle = (a,b,c,tint) => {
+                int n = vh.currentVertCount;
+                vh.AddVert(center+a*scale,tint,Vector2.zero);
+                vh.AddVert(center+b*scale,tint,Vector2.zero);
+                vh.AddVert(center+c*scale,tint,Vector2.zero);
+                vh.AddTriangle(n,n+1,n+2);
+            };
+            System.Action<Vector2,float,float,float,float> arc = (origin,radius,thickness,start,end) => {
+                for (int i=0;i<32;i++)
+                {
+                    float a=Mathf.Lerp(start,end,i/32f)*Mathf.Deg2Rad;
+                    float b=Mathf.Lerp(start,end,(i+1)/32f)*Mathf.Deg2Rad;
+                    var u=new Vector2(Mathf.Cos(a),Mathf.Sin(a)); var v=new Vector2(Mathf.Cos(b),Mathf.Sin(b));
+                    triangle(origin+u*radius,origin+v*radius,origin+v*(radius-thickness),color);
+                    triangle(origin+u*radius,origin+v*(radius-thickness),origin+u*(radius-thickness),color);
+                }
+            };
+            if (Shape == Kind.Crystal)
+            {
+                var top=new Vector2(0,.46f); var right=new Vector2(.36f,.10f);
+                var bottom=new Vector2(0,-.46f); var left=new Vector2(-.36f,.10f);
+                var middle=new Vector2(0,.08f);
+                triangle(top,right,middle,CandyTheme.Hex("B7FCFF"));
+                triangle(top,middle,left,CandyTheme.Hex("5EE3FA"));
+                triangle(left,middle,bottom,CandyTheme.Hex("22BBDC"));
+                triangle(middle,right,bottom,CandyTheme.Hex("7484EE"));
+            }
+            else if (Shape == Kind.Profile)
+            {
+                arc(Vector2.zero,.46f,.045f,0,360);
+                arc(new Vector2(0,.16f),.125f,.04f,0,360);
+                arc(new Vector2(0,-.27f),.25f,.045f,0,180);
+            }
+            else
+            {
+                arc(new Vector2(0,.05f),.22f,.065f,0,180);
+                triangle(new Vector2(-.29f,.08f),new Vector2(.29f,.08f),new Vector2(.29f,-.35f),color);
+                triangle(new Vector2(-.29f,.08f),new Vector2(.29f,-.35f),new Vector2(-.29f,-.35f),color);
+            }
         }
     }
     [RequireComponent(typeof(CanvasRenderer))]

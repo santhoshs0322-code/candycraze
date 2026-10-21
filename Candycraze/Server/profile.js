@@ -4,7 +4,7 @@ const counters = [
   'BoosterExtraMoves', 'BoosterColorBlast'
 ];
 export function defaultSave() {
-  return { SchemaVersion: 2, CurrentLevel: 3, TotalStars: 0, LevelEntries: [],
+  return { SchemaVersion: 2, CurrentLevel: 1, TotalStars: 0, LevelEntries: [],
     Coins: 0, Lives: 5, SoundOn: true, MusicOn: true, DailyRewardDay: 0,
     LastLifeLostTicks: 0, LastDailyRewardTicks: 0, LastPlayedLevel: 1,
     PlaySeconds: 0, ...Object.fromEntries(counters.map(key => [key, 0])) };
@@ -24,7 +24,7 @@ export function validateSave(json) {
     if (typeof input[key] !== 'boolean') throw Object.assign(new Error('Invalid preference.'), { status: 400 });
     save[key] = input[key];
   }
-  save.CurrentLevel = Math.max(3, integer(input.CurrentLevel ?? 3, 10001));
+  save.CurrentLevel = Math.max(1, integer(input.CurrentLevel ?? 1, 10001));
   save.LastPlayedLevel = Math.max(1, integer(input.LastPlayedLevel ?? 1, 10000));
   save.Lives = integer(input.Lives ?? 5, 5);
   save.DailyRewardDay = integer(input.DailyRewardDay ?? 0, 6);
@@ -58,5 +58,7 @@ export function validateSave(json) {
     if (result.Completed) save.CurrentLevel = Math.max(save.CurrentLevel, n + 1);
     return result;
   });
+  if (save.CurrentLevel === 3 && save.LevelEntries.length === 0 && save.LevelsStarted === 0 &&
+      save.LevelsWon === 0 && save.LevelsLost === 0 && save.TotalMoves === 0) save.CurrentLevel = 1;
   return save; // Whitelist fields; never permit player IDs/session fields in a save.
 }

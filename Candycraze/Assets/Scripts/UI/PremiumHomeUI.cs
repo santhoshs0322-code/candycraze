@@ -19,14 +19,16 @@ namespace CandyCraze
             if (CloudSaveManager.Instance == null) new GameObject("CloudSaveManager").AddComponent<CloudSaveManager>();
             if (IAPManager.Instance == null) new GameObject("IAPManager").AddComponent<IAPManager>();
             root = CandyTheme.Page("PremiumHome");
-            var purse = CandyTheme.Card(root, "CoinPill", .06f,.927f,.39f,.98f,CandyTheme.Cream);
-            coins = CandyTheme.Label(purse.transform,"0 coins",0,0,1,1,32);
-            sign = CandyTheme.Button(root,"SIGN IN",.65f,.927f,.94f,.98f,CandyTheme.Purple,AccountAction,28);
-            signLabel = sign.GetComponentInChildren<Text>();
-            signLabel.rectTransform.anchorMin = new Vector2(.27f,.1f);
-            // A simple profile silhouette stays legible without an external icon font.
-            CandyTheme.SpriteImage(sign.transform,CandyTheme.Circle,.09f,.52f,.24f,.83f).color = Color.white;
-            CandyTheme.SpriteImage(sign.transform,CandyTheme.Circle,.055f,.17f,.275f,.54f).color = Color.white;
+            var wallet = CandyTheme.Button(root,"",.05f,.916f,.46f,.984f,CandyTheme.Ink,ShowShop);
+            CandyTheme.Icon(wallet.transform,CandyGlyph.Kind.Crystal,.035f,.15f,.22f,.85f,Color.white);
+            CandyTheme.Label(wallet.transform,"CRYSTALS",.25f,.57f,.78f,.89f,20,CandyTheme.Hex("EADDF5"));
+            coins = CandyTheme.Label(wallet.transform,"0",.25f,.07f,.78f,.61f,40,Color.white);
+            var add = CandyTheme.Card(wallet.transform,"AddCrystals",.82f,.23f,.96f,.77f,CandyTheme.Pink,false);
+            CandyTheme.Label(add.transform,"+",0,0,1,1,32,Color.white);
+            sign = CandyTheme.Button(root,"",.62f,.916f,.95f,.984f,CandyTheme.Cream,AccountAction);
+            CandyTheme.Icon(sign.transform,CandyGlyph.Kind.Profile,.06f,.16f,.29f,.84f,CandyTheme.Purple);
+            signLabel = CandyTheme.Label(sign.transform,"SIGN IN",.33f,.30f,.95f,.80f,28,CandyTheme.Ink);
+            CandyTheme.Label(sign.transform,"YOUR PROFILE",.33f,.08f,.95f,.35f,20,CandyTheme.Purple);
             var title = CandyTheme.Label(root,"CANDY",.06f,.79f,.94f,.92f,132,CandyTheme.Cream);
             var shadow = title.gameObject.AddComponent<Shadow>(); shadow.effectDistance = new Vector2(0,-8); shadow.effectColor = CandyTheme.Pink;
             title = CandyTheme.Label(root,"CRAZE",.1f,.685f,.9f,.82f,140,CandyTheme.Pink);
@@ -40,15 +42,14 @@ namespace CandyCraze
                 var gem = CandyTheme.SpriteImage(root,gems[i%gems.Length].CandySprite,x,y,x+.155f,y+.105f);
                 gem.transform.localEulerAngles = new Vector3(0,0,(i-2)*-12);
             }
-            play = CandyTheme.Button(root,"LET'S PLAY",.14f,.428f,.86f,.515f,CandyTheme.Pink,
+            play = CandyTheme.Button(root,"LET'S PLAY",.10f,.345f,.90f,.44f,CandyTheme.Pink,
                 () => SceneController.NavigateTo(Constants.SCENE_LEVEL_MAP),54);
-            progress = CandyTheme.Label(root,"Your adventure starts here",.08f,.38f,.92f,.425f,28);
-            daily = CandyTheme.Button(root,"DAILY TREAT",.045f,.304f,.345f,.369f,CandyTheme.Purple,ShowDaily,25);
-            CandyTheme.Button(root,"SHOP",.36f,.304f,.64f,.369f,CandyTheme.Pink,ShowShop,28);
-            settings = CandyTheme.Button(root,"SETTINGS",.655f,.304f,.955f,.369f,CandyTheme.Mint,ShowSettings,25);
-            var account = CandyTheme.Card(root,"PlayerCard",.065f,.046f,.935f,.272f,CandyTheme.Cream);
-            identity = CandyTheme.Label(account.transform,"GUEST ADVENTURER",.06f,.71f,.94f,.94f,34);
-            status = CandyTheme.Label(account.transform,"",.06f,.16f,.94f,.65f,30);
+            progress = CandyTheme.Label(root,"Your adventure starts here",.08f,.295f,.92f,.335f,28);
+            daily = CandyTheme.Button(root,"DAILY TREAT",.045f,.195f,.345f,.27f,CandyTheme.Purple,ShowDaily,25);
+            CandyTheme.Button(root,"SHOP",.36f,.195f,.64f,.27f,CandyTheme.Pink,ShowShop,28);
+            settings = CandyTheme.Button(root,"SETTINGS",.655f,.195f,.955f,.27f,CandyTheme.Mint,ShowSettings,25);
+            identity = CandyTheme.Label(root,"",.08f,.14f,.92f,.18f,26);
+            status = CandyTheme.Label(root,"",.10f,.045f,.90f,.135f,25);
             status.fontStyle = FontStyle.Normal;
             GoogleAuthManager.Instance.OnStateChanged += Refresh;
             SaveManager.Instance.OnDataChanged += Refresh;
@@ -77,9 +78,11 @@ namespace CandyCraze
             }
             var data = SaveManager.Instance.Data; var auth = GoogleAuthManager.Instance;
             bool signed = auth != null && auth.IsAuthenticated(), busy = auth != null && auth.IsBusy;
-            coins.text = data.Coins.ToString("N0") + " crystals";
-            progress.text = "Level " + data.CurrentLevel + " unlocked  •  " + data.TotalStars + " stars";
-            identity.text = signed ? "Hello, " + auth.GetUserDisplayName() : "GUEST ADVENTURER";
+            coins.text = data.Coins.ToString("N0");
+            bool firstAdventure = data.CurrentLevel == 1 && data.LevelEntries.Count == 0;
+            progress.text = firstAdventure ? "Start at level 1. Your story begins here." : "Level " + data.CurrentLevel + "  /  " + data.TotalStars + " stars collected";
+            play.GetComponentInChildren<Text>().text = firstAdventure ? "START YOUR ADVENTURE" : "PLAY LEVEL " + data.CurrentLevel;
+            identity.text = signed ? "Welcome back, " + auth.GetUserDisplayName() : "";
             status.text = signed ? CloudSaveManager.Instance.StatusMessage : auth.StatusMessage;
             signLabel.text = busy ? "WAIT..." : signed ? "ACCOUNT" : "SIGN IN";
             sign.interactable = play.interactable = daily.interactable = settings.interactable = !busy;

@@ -11,12 +11,10 @@ namespace CandyCraze
         private Button previous, next, continueButton;
         private Coroutine focus;
         private int chapter, total;
-        private const int PageSize = 30;
-        private const float NodeSpacing = 360;
-        // Reserve vertical bands for the stars/status below and current-level label above.
-        // Connectors stay entirely in the gap, even where the trail becomes nearly vertical.
-        private const float PathBelowNode = 150;
-        private const float PathAboveNode = 160;
+        private const int PageSize = 12;
+        private const int Columns = 3;
+        private const float RowSpacing = 286;
+        private const float TileHeight = 244;
         private static readonly string[] ChapterNames = { "Sugar Meadows", "Jelly Gardens", "Caramel Valley", "Rainbow Peaks" };
         public void InjectRefs(Button b, Transform c, Text s) { } // Legacy scene compatibility.
         private void Start()
@@ -27,15 +25,19 @@ namespace CandyCraze
             chapter = (Mathf.Clamp(SaveManager.Instance.Data.CurrentLevel,1,total)-1)/PageSize;
             root = CandyTheme.Page("PremiumLevelMap");
             CandyTheme.Button(root,"HOME",.05f,.925f,.25f,.98f,CandyTheme.Purple,() => SceneController.NavigateTo(Constants.SCENE_MAIN_MENU),28);
-            CandyTheme.Label(root,"Your sweet journey",.28f,.925f,.95f,.98f,46);
-            var progressCard = CandyTheme.Card(root,"JourneyProgress",.05f,.815f,.95f,.91f,CandyTheme.Cream);
-            starsText = CandyTheme.Label(progressCard.transform,"",.03f,.40f,.49f,.95f,36);
-            balanceText = CandyTheme.Label(progressCard.transform,"",.51f,.40f,.97f,.95f,34);
-            completionText = CandyTheme.Label(progressCard.transform,"",.04f,.02f,.96f,.42f,26);
-            chapterText = CandyTheme.Label(root,"",.05f,.767f,.95f,.808f,29);
-            var track = CandyTheme.Card(root,"ChapterProgressTrack",.07f,.75f,.93f,.759f,CandyTheme.Hex("DCC8E4"),false);
+            CandyTheme.Label(root,"THE CANDY ATLAS",.28f,.925f,.95f,.98f,40);
+            var progressCard = CandyTheme.Card(root,"JourneyProgress",.05f,.795f,.95f,.907f,CandyTheme.Ink);
+            CandyTheme.Icon(progressCard.transform,CandyGlyph.Kind.Crystal,.035f,.20f,.15f,.80f,Color.white);
+            balanceText = CandyTheme.Label(progressCard.transform,"",.16f,.41f,.49f,.90f,38,Color.white);
+            CandyTheme.Label(progressCard.transform,"CRYSTALS",.16f,.12f,.49f,.42f,21,CandyTheme.Hex("EADDF5"));
+            CandyTheme.SpriteImage(progressCard.transform,Resources.Load<Sprite>("UI/Star"),.53f,.25f,.64f,.75f).color=CandyTheme.Gold;
+            starsText = CandyTheme.Label(progressCard.transform,"",.65f,.41f,.96f,.90f,38,Color.white);
+            CandyTheme.Label(progressCard.transform,"STARS EARNED",.65f,.12f,.96f,.42f,21,CandyTheme.Hex("EADDF5"));
+            chapterText = CandyTheme.Label(root,"",.05f,.748f,.95f,.791f,32);
+            completionText = CandyTheme.Label(root,"",.05f,.715f,.95f,.75f,23);
+            var track = CandyTheme.Card(root,"ChapterProgressTrack",.07f,.699f,.93f,.707f,CandyTheme.Hex("DCC8E4"),false);
             chapterFill = CandyTheme.Card(track.transform,"ChapterProgressFill",0,0,0,1,CandyTheme.Purple,false).rectTransform;
-            var scrollRoot = CandyTheme.Rect(root,"TrailScroll",.035f,.225f,.965f,.74f);
+            var scrollRoot = CandyTheme.Rect(root,"LevelCards",.04f,.225f,.96f,.684f);
             var hit = scrollRoot.gameObject.AddComponent<Image>(); hit.color = new Color(1,1,1,.08f);
             scroll = scrollRoot.gameObject.AddComponent<ScrollRect>();
             scroll.horizontal = false; scroll.scrollSensitivity = 60;
@@ -75,68 +77,55 @@ namespace CandyCraze
             int current = Mathf.Clamp(data.CurrentLevel,1,total), completedCount = 0;
             for(int level = first; level < first+count; level++)
                 if (data.GetEntry(level)?.Completed ?? false) completedCount++;
-            float height = count*NodeSpacing+180;
+            float height = Mathf.CeilToInt(count/(float)Columns)*RowSpacing+40;
             content.sizeDelta = new Vector2(0,height);
-            chapterText.text = "CHAPTER " + (chapter+1) + " / " + ((total+PageSize-1)/PageSize) + "  -  " + ChapterNames[chapter%ChapterNames.Length];
-            starsText.text = data.TotalStars.ToString("N0") + " STARS";
-            balanceText.text = data.Coins.ToString("N0") + " CRYSTALS";
-            completionText.text = "Levels " + first + " - " + (first+count-1) + "   |   " + completedCount + " / " + count + " completed";
+            chapterText.text = "WORLD " + (chapter+1) + "  /  " + ChapterNames[chapter%ChapterNames.Length];
+            starsText.text = data.TotalStars.ToString("N0");
+            balanceText.text = data.Coins.ToString("N0");
+            completionText.text = current == 1 && completedCount == 0 && chapter == 0
+                ? "Begin with level 1. Win to unlock the next sweet challenge."
+                : "Levels " + first + " - " + (first+count-1) + "   /   " + completedCount + " of " + count + " complete";
             chapterFill.anchorMax = new Vector2((float)completedCount/count,1);
             previous.interactable = chapter > 0;
             next.interactable = first+count <= total;
-            continueText.text = (data.GetEntry(current)?.Completed ?? false) ? "REPLAY LEVEL " + current : "PLAY LEVEL " + current;
+            continueText.text = current == 1 && !(data.GetEntry(1)?.Completed ?? false) ? "START LEVEL 1"
+                : (data.GetEntry(current)?.Completed ?? false) ? "REPLAY LEVEL " + current : "CONTINUE - LEVEL " + current;
             continueButton.interactable = data.IsLevelUnlocked(current);
             for(int i=0;i<count;i++)
             {
                 int level=first+i;
-                float x=.5f+Mathf.Sin(i*.95f)*.27f, y=-(175+i*NodeSpacing);
+                int row=i/Columns, column=i%Columns;
+                float x0=.025f+column*.33f, x1=x0+.29f, y=-(25+TileHeight*.5f+row*RowSpacing);
                 bool unlocked=data.IsLevelUnlocked(level), completed=data.GetEntry(level)?.Completed??false;
                 bool isCurrent=level==current;
-                if(i>0)
-                {
-                    float previousX=.5f+Mathf.Sin((i-1)*.95f)*.27f;
-                    for(int dot=1;dot<=3;dot++)
-                    {
-                        float gapProgress=dot/4f;
-                        float distanceFromPrevious=Mathf.Lerp(PathBelowNode,NodeSpacing-PathAboveNode,gapProgress);
-                        float t=distanceFromPrevious/NodeSpacing;
-                        var bead=CandyTheme.SpriteImage(content,CandyTheme.Circle,Mathf.Lerp(previousX,x,t),1,Mathf.Lerp(previousX,x,t),1);
-                        bead.color=unlocked?CandyTheme.Purple:CandyTheme.Hex("C9B4D2");
-                        bead.rectTransform.sizeDelta=new Vector2(12,12);
-                        bead.rectTransform.anchoredPosition=new Vector2(0,y+NodeSpacing*(1-t));
-                        bead.transform.SetAsFirstSibling();
-                    }
-                }
                 if(isCurrent)
                 {
-                    var ring=CandyTheme.SpriteImage(content,CandyTheme.Circle,x,1,x,1);
-                    ring.color=CandyTheme.Gold; ring.rectTransform.sizeDelta=new Vector2(184,184);
-                    ring.rectTransform.anchoredPosition=new Vector2(0,y);
+                    var border=CandyTheme.Card(content,"CurrentLevelFrame",x0,1,x1,1,CandyTheme.Gold,false);
+                    border.rectTransform.sizeDelta=new Vector2(14,TileHeight+14);
+                    border.rectTransform.anchoredPosition=new Vector2(0,y);
                 }
-                var node=CandyTheme.Button(content,level.ToString(),x,1,x,1,
-                    unlocked?(completed?CandyTheme.Purple:CandyTheme.Pink):CandyTheme.Hex("8B7797"),() => OpenLevel(level),56);
-                node.image.sprite=CandyTheme.Circle; node.image.type=Image.Type.Simple;
-                var rt=(RectTransform)node.transform; rt.sizeDelta=new Vector2(152,152); rt.anchoredPosition=new Vector2(0,y);
-                node.interactable=unlocked;
-                var label = node.GetComponentInChildren<Text>();
-                label.rectTransform.anchorMin=new Vector2(.05f,.23f); label.rectTransform.anchorMax=new Vector2(.95f,.83f);
-                if(isCurrent)
-                {
-                    var currentBadge=CandyTheme.Card(node.transform,"CurrentLevelLabel",-.48f,1.20f,1.48f,1.44f,CandyTheme.Cream,false);
-                    CandyTheme.Label(currentBadge.transform,"YOU ARE HERE",.03f,.02f,.97f,.98f,23,CandyTheme.Ink);
-                }
+                Color tileColor = !unlocked ? CandyTheme.Hex("E9DDEE") : isCurrent ? CandyTheme.Purple : CandyTheme.Cream;
+                Color ink = isCurrent ? Color.white : !unlocked ? CandyTheme.Hex("796485") : CandyTheme.Ink;
+                var tile=CandyTheme.Button(content,"",x0,1,x1,1,tileColor,() => OpenLevel(level));
+                var rt=(RectTransform)tile.transform; rt.sizeDelta=new Vector2(0,TileHeight); rt.anchoredPosition=new Vector2(0,y);
+                tile.interactable=unlocked;
+                var colors=tile.colors; colors.disabledColor=Color.white; tile.colors=colors;
+                CandyTheme.Label(tile.transform,isCurrent?(level==1?"START HERE":"NEXT LEVEL"):"LEVEL",.05f,.76f,.95f,.94f,22,isCurrent?CandyTheme.Gold:ink);
+                CandyTheme.Label(tile.transform,level.ToString(),.12f,.29f,.88f,.76f,70,ink);
                 if(completed)
                 {
                     for(int star=0;star<3;star++)
                     {
-                        var image=CandyTheme.SpriteImage(node.transform,Resources.Load<Sprite>("UI/Star"),.08f+star*.28f,-.38f,.36f+star*.28f,-.12f);
-                        image.color=star<data.GetStars(level)?CandyTheme.Gold:CandyTheme.Hex("9E87AB");
+                        var image=CandyTheme.SpriteImage(tile.transform,Resources.Load<Sprite>("UI/Star"),.16f+star*.23f,.08f,.36f+star*.23f,.29f);
+                        image.color=star<data.GetStars(level)?CandyTheme.Gold:CandyTheme.Hex("CFBDD8");
                     }
                 }
+                else if(unlocked)
+                    CandyTheme.Label(tile.transform,"LET'S PLAY",.07f,.06f,.93f,.27f,25,ink);
                 else
                 {
-                    var badge=CandyTheme.Card(node.transform,"LevelStatus",-.27f,-.38f,1.27f,-.12f,CandyTheme.Cream,false);
-                    CandyTheme.Label(badge.transform,unlocked?"READY TO PLAY":"LOCKED",.02f,.03f,.98f,.97f,23,CandyTheme.Ink);
+                    CandyTheme.Icon(tile.transform,CandyGlyph.Kind.Lock,.16f,.08f,.30f,.27f,ink);
+                    CandyTheme.Label(tile.transform,"LOCKED",.32f,.07f,.90f,.27f,23,ink);
                 }
             }
             focus=StartCoroutine(FocusCurrent(first,count,height));
@@ -146,7 +135,8 @@ namespace CandyCraze
             yield return null;
             Canvas.ForceUpdateCanvases(); scroll.StopMovement();
             float index=Mathf.Clamp(SaveManager.Instance.Data.CurrentLevel-first,0,count-1);
-            float distance=Mathf.Max(0,175+index*NodeSpacing-scroll.viewport.rect.height*.4f);
+            float row=Mathf.Floor(index/Columns);
+            float distance=Mathf.Max(0,row*RowSpacing-scroll.viewport.rect.height*.15f);
             float overflow=Mathf.Max(1,height-scroll.viewport.rect.height);
             scroll.verticalNormalizedPosition=1-Mathf.Clamp01(distance/overflow);
             focus=null;

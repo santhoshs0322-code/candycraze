@@ -3,9 +3,8 @@
 // Plain C# serialisable class — everything persisted between
 // sessions.
 //
-// CurrentLevel = 3  means levels 1, 2, and 3 are all unlocked
-// on a fresh install (IsLevelUnlocked returns true for any
-// levelNumber <= CurrentLevel).
+// New players start at level 1. Completing a level unlocks the next.
+// Existing played progress is preserved.
 // ============================================================
 
 using System;
@@ -48,7 +47,7 @@ namespace CandyCraze
         public void Normalise()
         {
             SchemaVersion = 2;
-            CurrentLevel = Math.Max(3, Math.Min(10001, CurrentLevel));
+            CurrentLevel = Math.Max(1, Math.Min(10001, CurrentLevel));
             LastPlayedLevel = Math.Max(1, Math.Min(10000, LastPlayedLevel));
             LevelsStarted = Math.Max(0, LevelsStarted);
             LevelsWon = Math.Max(0, LevelsWon);
@@ -88,6 +87,11 @@ namespace CandyCraze
                 else unique.Add(entry.LevelNumber, entry);
             }
             LevelEntries = new List<LevelSaveEntry>(unique.Values);
+            // Correct untouched profiles created when the starter default was level 3.
+            // Never reset a profile that has played a level or earned progress.
+            if (CurrentLevel == 3 && LevelEntries.Count == 0 && LevelsStarted == 0 &&
+                LevelsWon == 0 && LevelsLost == 0 && TotalMoves == 0)
+                CurrentLevel = 1;
             TotalStars = 0;
             foreach (var entry in LevelEntries)
             {
@@ -98,9 +102,9 @@ namespace CandyCraze
         // ── Progress ──────────────────────────────────────────────
         /// <summary>
         /// Levels 1 through CurrentLevel are all unlocked.
-        /// Default = 3  →  first 3 levels available from the start.
+        /// Default = 1  →  only level 1 is available from the start.
         /// </summary>
-        public int CurrentLevel  = 3;
+        public int CurrentLevel  = 1;
         public int TotalStars    = 0;
 
         public List<LevelSaveEntry> LevelEntries = new List<LevelSaveEntry>();

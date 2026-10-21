@@ -30,7 +30,7 @@ const login = code => post('/api/auth/play-games', { authorizationCode: code, pl
 test('one verified player, one document across login, save, logout, restore', async () => {
   const first = await login('alice');
   assert.equal(first.status, 200); assert.equal(first.body.user.playerId, 'alice');
-  assert.equal(JSON.parse(first.body.user.saveData).CurrentLevel, 3);
+  assert.equal(JSON.parse(first.body.user.saveData).CurrentLevel, 1);
   const save = defaultSave();
   save.Coins = 321; save.BoosterHammer = 4; save.SoundOn = false; save.LevelsStarted = 12;
   save.LevelEntries = [{ LevelNumber: 5, Completed: true, StarsEarned: 3, HighScore: 12345, Attempts: 2, Wins: 1 }];
@@ -73,7 +73,7 @@ test('malformed saves and duplicate level records are rejected', () => {
   for (const value of ['null', '[]', '{}garbage', '{"Coins":-1}', '{"Lives":99}', '{"SoundOn":"true"}',
     '{"LevelEntries":[{"LevelNumber":1,"Completed":true},{"LevelNumber":1,"Completed":true}]}'])
     assert.throws(() => validateSave(value));
-  assert.equal(validateSave('{}').CurrentLevel, 3);
+  assert.equal(validateSave('{}').CurrentLevel, 1);
   assert.equal(validateSave('{"playerId":"admin","sessionHash":"fake"}').playerId, undefined);
 });
 test('Google identity comes from players/me, not client claims', async () => {
@@ -87,4 +87,15 @@ test('Google identity comes from players/me, not client claims', async () => {
   assert.equal(calls[0].options.body.get('client_id'), 'web-client');
   assert.equal(calls[1].options.headers.Authorization, 'Bearer access');
   await assert.rejects(() => verifyPlayGamesCode('single-use-code', {}, async () => ({ ok: false })), /rejected/);
+});
+
+
+test('untouched legacy starter moves to level one without losing currency; played progress is preserved', () => {
+  const fresh = validateSave(JSON.stringify({ CurrentLevel: 3, Coins: 875 }));
+  assert.equal(fresh.CurrentLevel, 1);
+  assert.equal(fresh.Coins, 875);
+  assert.equal(validateSave(JSON.stringify({ CurrentLevel: 3, LevelsStarted: 1 })).CurrentLevel, 3);
+  assert.equal(validateSave(JSON.stringify({ CurrentLevel: 7, Coins: 875 })).CurrentLevel, 7);
+  const completed = validateSave(JSON.stringify({ CurrentLevel: 1, LevelEntries: [{ LevelNumber: 1, Completed: true, StarsEarned: 2 }] }));
+  assert.equal(completed.CurrentLevel, 2);
 });

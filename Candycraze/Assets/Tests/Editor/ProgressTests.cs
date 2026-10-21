@@ -7,11 +7,25 @@ public class ProgressTests
     [Test] public void FreshProfileUsesDefaultProgress()
     {
         var data = new SaveData();
-        Assert.AreEqual(3, data.CurrentLevel);
+        Assert.AreEqual(1, data.CurrentLevel);
         Assert.AreEqual(0, data.LevelEntries.Count);
         Assert.AreEqual(0, data.Coins);
         Assert.IsFalse(data.IsLevelUnlocked(0));
+        Assert.IsTrue(data.IsLevelUnlocked(1));
+        Assert.IsFalse(data.IsLevelUnlocked(2));
+        data.Normalise();
+        Assert.AreEqual(1, data.CurrentLevel);
         Assert.IsFalse(data.IsLevelUnlocked(4));
+    }
+    [Test] public void UntouchedLegacyStarterBeginsAtOneWithoutLosingBalance()
+    {
+        var data = new SaveData { CurrentLevel = 3, Coins = 875 };
+        data.Normalise();
+        Assert.AreEqual(1, data.CurrentLevel);
+        Assert.AreEqual(875, data.Coins);
+        var played = new SaveData { CurrentLevel = 3, LevelsStarted = 1 };
+        played.Normalise();
+        Assert.AreEqual(3, played.CurrentLevel);
     }
     [Test] public void ReplayingLevelNeverDuplicatesItsRecordOrStars()
     {
