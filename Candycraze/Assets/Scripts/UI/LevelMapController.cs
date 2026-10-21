@@ -12,7 +12,11 @@ namespace CandyCraze
         private Coroutine focus;
         private int chapter, total;
         private const int PageSize = 30;
-        private const float NodeSpacing = 230;
+        private const float NodeSpacing = 360;
+        // Reserve vertical bands for the stars/status below and current-level label above.
+        // Connectors stay entirely in the gap, even where the trail becomes nearly vertical.
+        private const float PathBelowNode = 150;
+        private const float PathAboveNode = 160;
         private static readonly string[] ChapterNames = { "Sugar Meadows", "Jelly Gardens", "Caramel Valley", "Rainbow Peaks" };
         public void InjectRefs(Button b, Transform c, Text s) { } // Legacy scene compatibility.
         private void Start()
@@ -85,18 +89,20 @@ namespace CandyCraze
             for(int i=0;i<count;i++)
             {
                 int level=first+i;
-                float x=.5f+Mathf.Sin(i*.95f)*.27f, y=-(140+i*NodeSpacing);
+                float x=.5f+Mathf.Sin(i*.95f)*.27f, y=-(175+i*NodeSpacing);
                 bool unlocked=data.IsLevelUnlocked(level), completed=data.GetEntry(level)?.Completed??false;
                 bool isCurrent=level==current;
                 if(i>0)
                 {
                     float previousX=.5f+Mathf.Sin((i-1)*.95f)*.27f;
-                    for(int dot=1;dot<=8;dot++)
+                    for(int dot=1;dot<=3;dot++)
                     {
-                        float t=dot/9f;
+                        float gapProgress=dot/4f;
+                        float distanceFromPrevious=Mathf.Lerp(PathBelowNode,NodeSpacing-PathAboveNode,gapProgress);
+                        float t=distanceFromPrevious/NodeSpacing;
                         var bead=CandyTheme.SpriteImage(content,CandyTheme.Circle,Mathf.Lerp(previousX,x,t),1,Mathf.Lerp(previousX,x,t),1);
                         bead.color=unlocked?CandyTheme.Purple:CandyTheme.Hex("C9B4D2");
-                        bead.rectTransform.sizeDelta=new Vector2(15,15);
+                        bead.rectTransform.sizeDelta=new Vector2(12,12);
                         bead.rectTransform.anchoredPosition=new Vector2(0,y+NodeSpacing*(1-t));
                         bead.transform.SetAsFirstSibling();
                     }
@@ -114,18 +120,22 @@ namespace CandyCraze
                 node.interactable=unlocked;
                 var label = node.GetComponentInChildren<Text>();
                 label.rectTransform.anchorMin=new Vector2(.05f,.23f); label.rectTransform.anchorMax=new Vector2(.95f,.83f);
-                if(isCurrent) CandyTheme.Label(node.transform,"YOU ARE HERE",-.55f,1.12f,1.55f,1.39f,23,CandyTheme.Ink);
+                if(isCurrent)
+                {
+                    var currentBadge=CandyTheme.Card(node.transform,"CurrentLevelLabel",-.48f,1.20f,1.48f,1.44f,CandyTheme.Cream,false);
+                    CandyTheme.Label(currentBadge.transform,"YOU ARE HERE",.03f,.02f,.97f,.98f,23,CandyTheme.Ink);
+                }
                 if(completed)
                 {
                     for(int star=0;star<3;star++)
                     {
-                        var image=CandyTheme.SpriteImage(node.transform,Resources.Load<Sprite>("UI/Star"),.08f+star*.28f,-.24f,.36f+star*.28f,.07f);
+                        var image=CandyTheme.SpriteImage(node.transform,Resources.Load<Sprite>("UI/Star"),.08f+star*.28f,-.38f,.36f+star*.28f,-.12f);
                         image.color=star<data.GetStars(level)?CandyTheme.Gold:CandyTheme.Hex("9E87AB");
                     }
                 }
                 else
                 {
-                    var badge=CandyTheme.Card(node.transform,"LevelStatus",-.27f,-.27f,1.27f,.01f,CandyTheme.Cream,false);
+                    var badge=CandyTheme.Card(node.transform,"LevelStatus",-.27f,-.38f,1.27f,-.12f,CandyTheme.Cream,false);
                     CandyTheme.Label(badge.transform,unlocked?"READY TO PLAY":"LOCKED",.02f,.03f,.98f,.97f,23,CandyTheme.Ink);
                 }
             }
@@ -136,7 +146,7 @@ namespace CandyCraze
             yield return null;
             Canvas.ForceUpdateCanvases(); scroll.StopMovement();
             float index=Mathf.Clamp(SaveManager.Instance.Data.CurrentLevel-first,0,count-1);
-            float distance=Mathf.Max(0,140+index*NodeSpacing-scroll.viewport.rect.height*.4f);
+            float distance=Mathf.Max(0,175+index*NodeSpacing-scroll.viewport.rect.height*.4f);
             float overflow=Mathf.Max(1,height-scroll.viewport.rect.height);
             scroll.verticalNormalizedPosition=1-Mathf.Clamp01(distance/overflow);
             focus=null;
