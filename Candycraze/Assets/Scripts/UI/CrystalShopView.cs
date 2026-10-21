@@ -13,6 +13,14 @@ namespace CandyCraze
         private readonly string[] quantities = { "500", "1,200", "2,800" };
         public static CrystalShopView Build(RectTransform card, GameObject overlay, Action close, Action<string> purchased = null)
         {
+            if (CloudSaveManager.Instance == null || !CloudSaveManager.Instance.IsSignedIn)
+            {
+                CandyTheme.Label(card,"Sign in to continue purchasing.\nGo to Home to sign in and restore your account before buying crystals.",.08f,.38f,.92f,.74f,32);
+                CandyTheme.Button(card,"SIGN IN ON HOME",.08f,.20f,.92f,.34f,CandyTheme.Purple,
+                    () => SceneController.NavigateTo(Constants.SCENE_MAIN_MENU),30);
+                CandyTheme.Button(card,"NOT NOW",.08f,.035f,.92f,.17f,CandyTheme.Pink,() => close(),28);
+                return null;
+            }
             card.anchorMin = new Vector2(.06f,.16f);
             card.anchorMax = new Vector2(.94f,.84f);
             var balanceCard = CandyTheme.Card(card,"CrystalBalance",.07f,.67f,.93f,.77f,CandyTheme.Ink,false);
