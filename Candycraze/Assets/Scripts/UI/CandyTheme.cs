@@ -161,6 +161,7 @@ namespace CandyCraze
         }
     }
     // Resolution-independent UI symbols with consistent proportions on narrow screens.
+    [RequireComponent(typeof(CanvasRenderer))]
     public class CandyGlyph : MaskableGraphic
     {
         public enum Kind { Crystal, Profile, Lock }
