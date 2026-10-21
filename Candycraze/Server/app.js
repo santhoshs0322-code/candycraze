@@ -21,18 +21,29 @@ export function createApp({ players, verify, now = () => new Date(), trustedProx
     res.on('finish', () => console.log(`[HTTP] ${req.method} ${req.path} ${res.statusCode} ${Date.now() - startedAt}ms`));
     next();
   });
-  // Bounded, per-process abuse protection; use an edge rate limiter for multi-instance deployment.
-  const attempts = new Map();
-  app.use(['/api/auth/play-games', '/api/billing', '/api/diagnostics'], (req, res, next) => {
-    const time = Date.now();
-    for (const [ip, entry] of attempts) if (time - entry.start > 60000) attempts.delete(ip);
-    const ip = req.ip;
-    if (!attempts.has(ip) && attempts.size >= 10000) return res.status(429).json({ success: false, error: 'Please retry later.' });
-    const entry = attempts.get(ip) ?? { start: time, count: 0 };
-    entry.count++; attempts.set(ip, entry);
-    if (entry.count > 20) return res.status(429).json({ success: false, error: 'Too many attempts. Retry in a minute.' });
-    next();
-  });
+  // Independent per-IP budgets: telemetry must never exhaust checkout/sign-in capacity.
+  // Bounded per-process storage; use an edge limiter for multi-instance deployments.
+  const rateLimit = limit => {
+    const attempts = new Map();
+    return (req, res, next) => {
+      const time = Date.now();
+      for (const [ip, entry] of attempts) if (time - entry.start >= 60000) attempts.delete(ip);
+      const ip = req.ip;
+      if (!attempts.has(ip) && attempts.size >= 10000)
+        return res.set('Retry-After', '60').status(429).json({ success: false, error: 'Please retry later.' });
+      const entry = attempts.get(ip) ?? { start: time, count: 0 };
+      entry.count++; attempts.set(ip, entry);
+      if (entry.count > limit) {
+        const retryAfter = Math.max(1, Math.ceil((entry.start + 60000 - time) / 1000));
+        return res.set('Retry-After', String(retryAfter)).status(429)
+          .json({ success: false, error: 'Too many attempts. Retry shortly.' });
+      }
+      next();
+    };
+  };
+  app.use('/api/auth/play-games', rateLimit(30));
+  app.use('/api/billing', rateLimit(60));
+  app.use('/api/diagnostics', rateLimit(300));
   const route = fn => (req, res, next) => Promise.resolve(fn(req, res)).catch(next);
   app.post('/api/diagnostics/signin-attempt', (req, res) => {
     const allowedStages = new Set(['button-clicked', 'play-games-success', 'play-games-failed',
