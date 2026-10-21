@@ -37,8 +37,8 @@ namespace CandyCraze
         public const int LIFE_REGEN_MINUTES    = 30;
 
         // ── Economy ──────────────────────────────────────────
-        public const int COINS_PER_STAR        = 10;
-        public const int COINS_PER_LEVEL_WIN   = 25;
+        public const int COINS_PER_STAR        = 1;
+        public const int COINS_PER_LEVEL_WIN   = 3;
 
         // ── Scene Names ──────────────────────────────────────
         public const string SCENE_BOOTSTRAP    = "Bootstrap";

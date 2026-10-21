@@ -131,50 +131,61 @@ namespace CandyCraze
             int index = (int)type, cost = costs[index];
             if (_premiumRoot == null) return;
             var card = CandyTheme.Modal(_premiumRoot, names[index] + " booster", out var overlay);
-            int crystals = SaveManager.Instance != null ? SaveManager.Instance.Data.Coins : 0;
+            card.anchorMin = new Vector2(.06f,.16f);
+            card.anchorMax = new Vector2(.94f,.84f);
             int quantity = 1;
-            var message = CandyTheme.Label(card,
-                "Choose quantity\nBalance: " + crystals + " crystals",
-                .08f,.61f,.92f,.73f,28);
-            var quantityText = CandyTheme.Label(card,"x1",.30f,.47f,.70f,.60f,42);
+            var summary = CandyTheme.Card(card,"PurchaseSummary",.07f,.49f,.93f,.77f,CandyTheme.Ink,false);
+            var balanceText = CandyTheme.Label(summary.transform,"",.04f,.66f,.96f,.96f,34,Color.white);
+            var costText = CandyTheme.Label(summary.transform,"",.04f,.35f,.96f,.65f,34,CandyTheme.Gold);
+            var remainingText = CandyTheme.Label(summary.transform,"",.04f,.04f,.96f,.34f,34,Color.white);
+            var quantityText = CandyTheme.Label(card,"1",.32f,.38f,.68f,.47f,42);
+            Button buy = null;
             Text buyLabel = null;
-            CandyTheme.Button(card,"-",.10f,.47f,.28f,.60f,CandyTheme.Purple,() => {
-                quantity = Mathf.Max(1, quantity - 1); quantityText.text = "x" + quantity;
-                if (buyLabel != null) buyLabel.text = "BUY - " + (cost * quantity);
-            },34);
-            CandyTheme.Button(card,"+",.72f,.47f,.90f,.60f,CandyTheme.Purple,() => {
-                quantity = Mathf.Min(20, quantity + 1); quantityText.text = "x" + quantity;
-                if (buyLabel != null) buyLabel.text = "BUY - " + (cost * quantity);
-            },34);
-            var buy = CandyTheme.Button(card,"BUY - " + cost,.1f,.31f,.9f,.44f,CandyTheme.Pink,() => {
+            System.Action refresh = () => {
+                int crystals = SaveManager.Instance != null ? SaveManager.Instance.Data.Coins : 0;
                 int total = cost * quantity;
-                if (SaveManager.Instance == null || SaveManager.Instance.Data.Coins < total)
-                { message.text = "Need " + total + " crystals.\nChoose GET CRYSTALS below."; return; }
+                balanceText.text = "Balance: " + crystals.ToString("N0") + " crystals";
+                costText.text = "Total cost: " + total.ToString("N0") + " crystals";
+                remainingText.text = crystals >= total
+                    ? "Remaining: " + (crystals-total).ToString("N0") + " crystals"
+                    : "Need " + (total-crystals).ToString("N0") + " more crystals";
+                remainingText.color = crystals >= total ? Color.white : CandyTheme.Gold;
+                quantityText.text = quantity.ToString();
+                if (buy != null) buy.interactable = crystals >= total && ShopManager.Instance != null;
+                if (buyLabel != null) buyLabel.text = "BUY " + quantity + " FOR " + total + " CRYSTALS";
+            };
+            CandyTheme.Button(card,"-",.1f,.38f,.28f,.47f,CandyTheme.Purple,() => { quantity = Mathf.Max(1,quantity-1); refresh(); },36);
+            CandyTheme.Button(card,"+",.72f,.38f,.90f,.47f,CandyTheme.Purple,() => { quantity = Mathf.Min(20,quantity+1); refresh(); },36);
+            var message = CandyTheme.Label(card,cost + " crystals each",.07f,.30f,.93f,.37f,26);
+            buy = CandyTheme.Button(card,"",.1f,.20f,.9f,.29f,CandyTheme.Pink,() => {
                 if (ShopManager.Instance == null || !ShopManager.Instance.BuyBoosters(type, quantity))
-                { message.text = "Could not complete purchase. Please retry."; return; }
+                { message.text = "Purchase not completed. Check your balance."; refresh(); return; }
                 Destroy(overlay);
                 _boosterHint.text = quantity + "x " + names[index] + " added. Tap the booster to use one.";
-            },28);
+            },30);
             buyLabel = buy.GetComponentInChildren<Text>();
-            CandyTheme.Button(card,"GET CRYSTALS",.1f,.16f,.9f,.28f,CandyTheme.Mint,() => {
+            CandyTheme.Button(card,"GET CRYSTALS",.1f,.10f,.9f,.19f,CandyTheme.Purple,() => {
                 Destroy(overlay); ShowInGameCrystalShop(type);
-            },27);
-            CandyTheme.Button(card,"NOT NOW",.1f,.025f,.9f,.13f,CandyTheme.Purple,() => Destroy(overlay),24);
+            },28);
+            CandyTheme.Button(card,"NOT NOW",.1f,.005f,.9f,.09f,CandyTheme.Purple,() => Destroy(overlay),26);
+            refresh();
+            StartCoroutine(RefreshPurchaseSummary(overlay,refresh));
+        }
+
+        private IEnumerator RefreshPurchaseSummary(GameObject overlay, System.Action refresh)
+        {
+            while (overlay != null)
+            {
+                refresh();
+                yield return new WaitForSecondsRealtime(.25f);
+            }
         }
 
         private void ShowInGameCrystalShop(BoosterType returnToBooster)
         {
             if (_premiumRoot == null) return;
             var card = CandyTheme.Modal(_premiumRoot,"Get crystals",out var shopOverlay);
-            var buttons = new Button[3];
-            for (int i = 0; i < buttons.Length; i++)
-                buttons[i] = CandyTheme.Button(card,"Loading...",.08f,.64f-i*.15f,.92f,.77f-i*.15f,
-                    CandyTheme.Purple,() => { },27);
-            var message = CandyTheme.Label(card,"",.07f,.19f,.93f,.33f,22);
-            var restore = CandyTheme.Button(card,"RESTORE / REFRESH",.08f,.105f,.92f,.19f,
-                CandyTheme.Mint,() => { },23);
-            CandyTheme.Button(card,"CLOSE",.08f,.015f,.92f,.10f,CandyTheme.Pink,() => Destroy(shopOverlay),23);
-            shopOverlay.AddComponent<CrystalShopView>().Configure(buttons,message,restore,_ => {
+            CrystalShopView.Build(card,shopOverlay,() => Destroy(shopOverlay),_ => {
                 if (shopOverlay != null) Destroy(shopOverlay);
                 ShowBoosterPurchase(returnToBooster);
             });

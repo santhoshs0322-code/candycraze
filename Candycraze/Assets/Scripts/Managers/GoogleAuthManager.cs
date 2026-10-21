@@ -118,6 +118,36 @@ public class GoogleAuthManager : MonoBehaviour
                 Debug.LogWarning("[GoogleAuth] Backend diagnostic did not arrive: " + request.error);
         }
     }
+    public void OpenAccountSettings()
+    {
+        if (IsBusy) return;
+#if UNITY_ANDROID && !UNITY_EDITOR
+        try
+        {
+            using (var unity = new AndroidJavaClass("com.unity3d.player.UnityPlayer"))
+            using (var activity = unity.GetStatic<AndroidJavaObject>("currentActivity"))
+            using (var manager = activity.Call<AndroidJavaObject>("getPackageManager"))
+            using (var intent = manager.Call<AndroidJavaObject>("getLaunchIntentForPackage", "com.google.android.play.games"))
+            {
+                if (intent != null)
+                    activity.Call("startActivity", intent);
+                else
+                    using (var settings = new AndroidJavaObject("android.content.Intent", "android.settings.SETTINGS"))
+                        activity.Call("startActivity", settings);
+            }
+            // End only the game session; Google owns the device account selection.
+            // The player explicitly signs in again after choosing the desired profile.
+            SignOut();
+            SetState(false, "Choose your account in Play Games settings > Sign in account, then reopen the game and sign in. You can select Ask each time.");
+        }
+        catch (Exception)
+        {
+            SetState(false, "Open phone Settings > Google > All services > Play Games > Sign in account to choose an account.");
+        }
+#else
+        SetState(false, "Account selection is available on your Android device in Google Play Games settings.");
+#endif
+    }
     public void SignOut()
     {
         ++operation;

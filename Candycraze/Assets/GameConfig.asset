@@ -16,8 +16,8 @@ MonoBehaviour:
   Levels: []
   MaxLives: 5
   LifeRegenMinutes: 30
-  CoinsPerStar: 10
-  CoinsPerLevelWin: 25
+  CoinsPerStar: 1
+  CoinsPerLevelWin: 3
   SwapDuration: 0.2
   InvalidSwapReturn: 0.15
   MatchDestroyDelay: 0.25

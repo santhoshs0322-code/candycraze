@@ -18,7 +18,12 @@ namespace CandyCraze
             root = CandyTheme.Page("PremiumHome");
             var purse = CandyTheme.Card(root, "CoinPill", .06f,.927f,.39f,.98f,CandyTheme.Cream);
             coins = CandyTheme.Label(purse.transform,"0 coins",0,0,1,1,32);
-            CandyTheme.Label(root,"SWEET ADVENTURES",.42f,.93f,.94f,.977f,26);
+            sign = CandyTheme.Button(root,"SIGN IN",.65f,.927f,.94f,.98f,CandyTheme.Purple,AccountAction,28);
+            signLabel = sign.GetComponentInChildren<Text>();
+            signLabel.rectTransform.anchorMin = new Vector2(.27f,.1f);
+            // A simple profile silhouette stays legible without an external icon font.
+            CandyTheme.SpriteImage(sign.transform,CandyTheme.Circle,.09f,.52f,.24f,.83f).color = Color.white;
+            CandyTheme.SpriteImage(sign.transform,CandyTheme.Circle,.055f,.17f,.275f,.54f).color = Color.white;
             var title = CandyTheme.Label(root,"CANDY",.06f,.79f,.94f,.92f,132,CandyTheme.Cream);
             var shadow = title.gameObject.AddComponent<Shadow>(); shadow.effectDistance = new Vector2(0,-8); shadow.effectColor = CandyTheme.Pink;
             title = CandyTheme.Label(root,"CRAZE",.1f,.685f,.9f,.82f,140,CandyTheme.Pink);
@@ -40,10 +45,8 @@ namespace CandyCraze
             settings = CandyTheme.Button(root,"SETTINGS",.655f,.304f,.955f,.369f,CandyTheme.Mint,ShowSettings,25);
             var account = CandyTheme.Card(root,"PlayerCard",.065f,.046f,.935f,.272f,CandyTheme.Cream);
             identity = CandyTheme.Label(account.transform,"GUEST ADVENTURER",.06f,.71f,.94f,.94f,34);
-            status = CandyTheme.Label(account.transform,"",.06f,.35f,.94f,.70f,30);
+            status = CandyTheme.Label(account.transform,"",.06f,.16f,.94f,.65f,30);
             status.fontStyle = FontStyle.Normal;
-            sign = CandyTheme.Button(account.transform,"SIGN IN WITH GOOGLE",.07f,.07f,.93f,.32f,CandyTheme.Purple,AccountAction,30);
-            signLabel = sign.GetComponentInChildren<Text>();
             GoogleAuthManager.Instance.OnStateChanged += Refresh;
             SaveManager.Instance.OnDataChanged += Refresh;
             AudioManager.Instance?.PlayMenuMusic();
@@ -64,17 +67,24 @@ namespace CandyCraze
             progress.text = "Level " + data.CurrentLevel + " unlocked  •  " + data.TotalStars + " stars";
             identity.text = signed ? "Hello, " + auth.GetUserDisplayName() : "GUEST ADVENTURER";
             status.text = signed ? CloudSaveManager.Instance.StatusMessage : auth.StatusMessage;
-            signLabel.text = busy ? "CONNECTING..." : signed ? "SIGN OUT" : "SIGN IN WITH GOOGLE";
+            signLabel.text = busy ? "WAIT..." : signed ? "ACCOUNT" : "SIGN IN";
             sign.interactable = play.interactable = daily.interactable = settings.interactable = !busy;
         }
         private void CloseDialog() { if (dialog != null) Destroy(dialog); dialog = null; }
         private void AccountAction()
         {
-            if (!GoogleAuthManager.Instance.IsAuthenticated()) { GoogleAuthManager.Instance.SignInWithGoogle(); return; }
-            var card = CandyTheme.Modal(root,"Sign out?",out dialog);
-            CandyTheme.Label(card,"You will return to a fresh guest adventure.\nYour account progress stays saved.\nUnsent progress stays backed up on this phone.",.07f,.39f,.93f,.76f,30);
-            CandyTheme.Button(card,"SIGN OUT",.1f,.22f,.9f,.36f,CandyTheme.Pink,() => { GoogleAuthManager.Instance.SignOut(); CloseDialog(); });
-            CandyTheme.Button(card,"KEEP PLAYING",.1f,.045f,.9f,.185f,CandyTheme.Purple,CloseDialog);
+            CloseDialog();
+            var auth = GoogleAuthManager.Instance;
+            bool signed = auth.IsAuthenticated();
+            var card = CandyTheme.Modal(root,signed ? "Your account" : "Save your adventure",out dialog);
+            CandyTheme.Label(card,signed ? "Signed in as " + auth.GetUserDisplayName() : "Sign in with your Google Play Games profile.",.07f,.60f,.93f,.76f,32);
+            CandyTheme.Label(card,"Choose account signs you out of this game. In Play Games settings > Sign in account, select CandyCraze and an account or Ask each time. Then reopen the game.",.07f,.38f,.93f,.60f,26);
+            CandyTheme.Button(card,signed ? "SIGN OUT" : "CONTINUE WITH GOOGLE",.08f,.25f,.92f,.37f,CandyTheme.Purple,() => {
+                CloseDialog();
+                if (signed) auth.SignOut(); else auth.SignInWithGoogle();
+            },28);
+            CandyTheme.Button(card,"CHOOSE ACCOUNT",.08f,.12f,.92f,.24f,CandyTheme.Pink,() => { auth.OpenAccountSettings(); CloseDialog(); },28);
+            CandyTheme.Button(card,"CLOSE",.08f,.015f,.92f,.11f,CandyTheme.Purple,CloseDialog,24);
         }
         private void ShowDaily()
         {
@@ -108,15 +118,7 @@ namespace CandyCraze
         {
             CloseDialog();
             var card = CandyTheme.Modal(root,"Crystal shop",out dialog);
-            var buttons = new Button[3];
-            for (int i = 0; i < buttons.Length; i++)
-                buttons[i] = CandyTheme.Button(card,"Loading...",.08f,.64f-i*.15f,.92f,.77f-i*.15f,
-                    CandyTheme.Purple,() => { },30);
-            var message = CandyTheme.Label(card,"",.07f,.19f,.93f,.33f,24);
-            var restore = CandyTheme.Button(card,"RESTORE / REFRESH",.08f,.105f,.92f,.19f,
-                CandyTheme.Mint,() => { },25);
-            CandyTheme.Button(card,"CLOSE",.08f,.015f,.92f,.10f,CandyTheme.Pink,CloseDialog,25);
-            dialog.AddComponent<CrystalShopView>().Configure(buttons,message,restore);
+            CrystalShopView.Build(card,dialog,CloseDialog);
         }
     }
 }
