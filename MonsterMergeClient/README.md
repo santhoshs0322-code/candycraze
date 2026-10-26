@@ -16,3 +16,6 @@ The build hook writes the Android app-ID resource and checks the package. UI can
 Existing browser/OpenID profiles and receipts remain stored; Play Games accounts use a separate player namespace. No unsafe matching by name/email or automatic account migration is performed.
 
 Validation: Java bridge compilation against cached Google Play SDK 22.0.0, Unity runtime/Editor/Android C# compilation, and 15 backend tests passed. The numeric game ID is configured. Full Android build and on-device sign-in still require verification of the linked OAuth clients, Play Games tester access, and an active Unity license.
+
+## Automatic Android versioning
+AutoBuildVersion runs for Android builds from the Build window, Build and Run, and scripted BuildPipeline builds. After configuration checks pass, it increments the patch version and Android bundle version code and persists the values. Example: 0.1.0 / 1 becomes 0.1.1 / 2. Later build failures keep the increment; validation failures before this callback do not consume a number. Non-Android builds are unchanged. ProjectBuilder no longer resets an existing version. Set the starting build number at least as high as any version already uploaded to Play before using this hook. Editor compilation passed; a complete Unity build has not been run for this change.

@@ -264,7 +264,8 @@ namespace MonsterMerge.Editor
             PlayerSettings.Android.targetSdkVersion=AndroidSdkVersions.AndroidApiLevelAuto;
             PlayerSettings.defaultScreenWidth=540; PlayerSettings.defaultScreenHeight=960;
             PlayerSettings.fullScreenMode=FullScreenMode.Windowed; PlayerSettings.runInBackground=true;
-            PlayerSettings.bundleVersion="0.1.0"; PlayerSettings.Android.bundleVersionCode=1;
+            if(string.IsNullOrEmpty(PlayerSettings.bundleVersion))PlayerSettings.bundleVersion="0.1.0";
+            if(PlayerSettings.Android.bundleVersionCode<1)PlayerSettings.Android.bundleVersionCode=1;
             var pipeline=AssetDatabase.LoadAssetAtPath<RenderPipelineAsset>("Assets/Settings/URP-Performant.asset");
             if(pipeline) { GraphicsSettings.defaultRenderPipeline=pipeline; QualitySettings.renderPipeline=pipeline; }
             EditorBuildSettings.scenes=new[] {
