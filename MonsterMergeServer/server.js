@@ -6,6 +6,7 @@ const jwt = require("jsonwebtoken");
 const mongoose = require("mongoose");
 const { OAuth2Client } = require("google-auth-library");
 const apps = require("./apps");
+const { createNativeAuth } = require("./native-auth");
 const { createPayments, PaymentError } = require("./games/monstermerge/play-billing");
 const { createMonsterAuth } = require("./monster-auth");
 const { createMonsterProfile, migrateMonsterDatabase } = require("./monster-profile");
@@ -29,7 +30,7 @@ app.use(express.json({ limit: "16kb" }));
 
 const userSchema = new mongoose.Schema({
   googleSub: { type: String, required: true, unique: true, index: true },
-  email: { type: String, required: true, lowercase: true, trim: true },
+  email: { type: String, default: "", lowercase: true, trim: true },
   name: { type: String, required: true, trim: true },
   picture: { type: String, default: "" },
   playerId:String,displayName:String,provider:String,loginCount:{type:Number,default:0},saveCount:{type:Number,default:0},
@@ -91,6 +92,7 @@ async function verifyMonsterSession(token) {
 const monsterAuth = createMonsterAuth({ connection: monsterConnection, google,
   clientId: process.env.MONSTER_GOOGLE_CLIENT_ID, users: () => usersFor("monstermerge"), issueToken,
   verifySession: verifyMonsterSession });
+app.use("/auth/monster",createNativeAuth({users:()=>usersFor("monstermerge"),issueToken}));
 app.use("/auth/monster", monsterAuth.router);
 app.use("/auth/monster/profile",createMonsterProfile({users:()=>usersFor("monstermerge"),verifySession:verifyMonsterSession,payments:payments.service,mode:payments.service.config.mode}));
 

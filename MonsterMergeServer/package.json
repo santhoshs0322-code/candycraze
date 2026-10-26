@@ -7,9 +7,9 @@
   },
   "scripts": {
     "start": "node server.js",
-    "check": "node --check server.js && node --check monster-auth.js && node --check monster-profile.js && node --check utils/google-play.js && node --check games/monstermerge/config.js && node --check games/monstermerge/play-api.js && node --check games/monstermerge/play-billing.js",
-    "test:payments": "node --test monster-play.test.js utils/google-play.test.js",
-    "test:monster-play": "node --test monster-play.test.js utils/google-play.test.js"
+    "check": "node --check server.js && node --check monster-auth.js && node --check monster-profile.js && node --check utils/google-play.js && node --check games/monstermerge/config.js && node --check games/monstermerge/play-api.js && node --check games/monstermerge/play-billing.js && node --check native-auth.js",
+    "test:payments": "node --test monster-play.test.js utils/google-play.test.js native-auth.test.js",
+    "test:monster-play": "node --test monster-play.test.js utils/google-play.test.js native-auth.test.js"
   },
   "dependencies": {
     "cors": "^2.8.5",

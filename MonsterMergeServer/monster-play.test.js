@@ -75,3 +75,22 @@ test('complete auth service starts with Play billing and rejects retired checkou
   assert.equal((await (await fetch(base+'/payments/health')).json()).provider,'google-play');assert.equal((await fetch(base+'/api/catalog')).status,404);assert.equal((await fetch(base+'/auth/monster/profile')).status,401);
  }finally{if(child.exitCode===null){const done=once(child,'exit');child.kill();await done;}}
 });
+
+test('native login preserves stable game accounts and does not expose secrets',async()=>{
+ const {createNativeAuth}=require('./native-auth');
+ const schema=new mongoose.Schema({googleSub:{type:String,unique:true},name:String,email:String,playerId:String,provider:String,displayName:String,loginCount:Number,lastLoginAt:Date});
+ const model=connection.model('NativeTestPlayer',schema);await model.init();
+ const app=express();app.use(express.json());
+ app.use('/auth/monster',createNativeAuth({users:()=>model,issueToken:u=>'session-'+u.id,
+ env:{MONSTER_GOOGLE_CLIENT_ID:'public-web-id',MONSTER_GOOGLE_CLIENT_SECRET:'must-not-leak'},
+ verify:async code=>{if(code!=='fixture-code')throw Object.assign(Error('rejected'),{status:401});return {playerId:'native-player',name:'Dragon'};}}));
+ const server=app.listen(0,'127.0.0.1');await once(server,'listening');const base=`http://127.0.0.1:${server.address().port}/auth/monster`;
+ try {
+  assert.deepEqual(await (await fetch(base+'/config')).json(),{serverClientId:'public-web-id'});
+  const login=async code=>fetch(base+'/play-games',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({authorizationCode:code,playerId:'forged-id'})});
+  assert.equal((await login('bad-code')).status,401);assert.equal(await model.countDocuments(),0);
+  const first=await (await login('fixture-code')).json();const second=await (await login('fixture-code')).json();
+  assert.equal(first.status,'signed_in');assert.equal(first.user.id,second.user.id);assert.equal(first.user.email,'');assert.ok(first.token);
+  assert.equal(await model.countDocuments(),1);assert.equal((await model.findOne()).googleSub,'playgames:native-player');
+ }finally{await new Promise(resolve=>server.close(resolve));}
+});

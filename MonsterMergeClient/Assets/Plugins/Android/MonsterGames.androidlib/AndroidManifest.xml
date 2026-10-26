@@ -1,0 +1,6 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android" package="com.gamixtv.monstermerge.games">
+  <application>
+    <meta-data android:name="com.google.android.gms.games.APP_ID" android:value="@string/monster_play_games_id" />
+    <meta-data android:name="com.google.android.gms.games.SUPPRESS_GAME_PROFILE_CREATION" android:value="true" />
+  </application>
+</manifest>
