@@ -17,5 +17,15 @@ services:
         sync: false
       - key: GOOGLE_CLIENT_SECRET
         sync: false
-      - key: MONGODB_DATABASE
-        value: candycraze
+      - key: MONSTER_MONGODB_DATABASE
+        value: monstermerge
+      - key: PUBLIC_URL
+        value: https://candycraze.onrender.com
+      - key: JWT_SECRET
+        generateValue: true
+      - key: MONSTER_PLAY_ENABLED
+        value: "false"
+      - key: MONSTER_PLAY_SERVICE_ACCOUNT_EMAIL
+        sync: false
+      - key: MONSTER_PLAY_SERVICE_ACCOUNT_PRIVATE_KEY
+        sync: false

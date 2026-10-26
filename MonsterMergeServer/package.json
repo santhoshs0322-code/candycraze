@@ -1,0 +1,22 @@
+{
+  "name": "multi-app-google-auth-server",
+  "version": "1.0.0",
+  "private": true,
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "start": "node server.js",
+    "check": "node --check server.js && node --check monster-auth.js && node --check monster-profile.js && node --check utils/google-play.js && node --check games/monstermerge/config.js && node --check games/monstermerge/play-api.js && node --check games/monstermerge/play-billing.js",
+    "test:payments": "node --test monster-play.test.js utils/google-play.test.js",
+    "test:monster-play": "node --test monster-play.test.js utils/google-play.test.js"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2",
+    "google-auth-library": "^11.1.0",
+    "jsonwebtoken": "^9.0.2",
+    "mongoose": "^8.18.1"
+  }
+}

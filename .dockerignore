@@ -1,9 +1,10 @@
-node_modules
-npm-debug.log
-.env
-.git
-.gitignore
-README.md
-Candycraze_BurstDebugInformation_DoNotShip
-.vscode
-.DS_Store
+# Only the Monster Merge test service is needed in this image.
+**
+!Dockerfile
+!MonsterMergeServer/
+!MonsterMergeServer/**
+MonsterMergeServer/node_modules
+MonsterMergeServer/.env
+MonsterMergeServer/.env.*
+MonsterMergeServer/*.test.js
+MonsterMergeServer/utils/*.test.js

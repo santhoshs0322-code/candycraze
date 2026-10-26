@@ -1,24 +1,16 @@
-# Use official Node.js runtime as base image
-FROM node:22-alpine
-
-# Set working directory in container
+# dev hosts the separate Monster Merge test service.
+FROM node:22-alpine AS dependencies
 WORKDIR /app
-
-# Copy package.json and package-lock.json
-COPY Candycraze/Server/package*.json ./
-
-# Install dependencies
-RUN npm ci --omit=dev
-
-# Copy the rest of the application code
-COPY Candycraze/Server/app.js Candycraze/Server/google.js Candycraze/Server/profile.js Candycraze/Server/billing.js Candycraze/Server/server.js ./
+COPY MonsterMergeServer/package.json MonsterMergeServer/package-lock.json ./
+RUN npm ci --omit=dev --ignore-scripts && npm cache clean --force
+FROM node:22-alpine
+ENV NODE_ENV=production PORT=3000
+ENV PUBLIC_URL=https://candycraze.onrender.com
+ENV MONSTER_MONGODB_DATABASE=monstermerge
+WORKDIR /app
+COPY --from=dependencies --chown=node:node /app/node_modules ./node_modules
+COPY --chown=node:node MonsterMergeServer/ ./
 USER node
-
-# Expose port 3000 (default for this server, overridable via PORT env var)
 EXPOSE 3000
-
-# Set environment variables (these will be overridden by Render)
-ENV NODE_ENV=production
-
-# Start the server
+HEALTHCHECK --interval=30s --timeout=5s --start-period=15s --retries=3 CMD wget -qO- "http://127.0.0.1:${PORT}/health" >/dev/null || exit 1
 CMD ["node", "server.js"]
