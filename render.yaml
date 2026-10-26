@@ -13,9 +13,9 @@ services:
         value: "3000"
       - key: MONGODB_URI
         sync: false
-      - key: GOOGLE_CLIENT_ID
+      - key: MONSTER_GOOGLE_CLIENT_ID
         sync: false
-      - key: GOOGLE_CLIENT_SECRET
+      - key: MONSTER_GOOGLE_CLIENT_SECRET
         sync: false
       - key: MONSTER_MONGODB_DATABASE
         value: monstermerge

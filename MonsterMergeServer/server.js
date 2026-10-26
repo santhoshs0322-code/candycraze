@@ -10,7 +10,7 @@ const { createPayments, PaymentError } = require("./games/monstermerge/play-bill
 const { createMonsterAuth } = require("./monster-auth");
 const { createMonsterProfile, migrateMonsterDatabase } = require("./monster-profile");
 
-const required = ["MONGODB_URI", "GOOGLE_CLIENT_ID", "GOOGLE_CLIENT_SECRET", "JWT_SECRET", "PUBLIC_URL"];
+const required = ["MONGODB_URI", "MONSTER_GOOGLE_CLIENT_ID", "MONSTER_GOOGLE_CLIENT_SECRET", "JWT_SECRET", "PUBLIC_URL"];
 for (const key of required) {
   if (!process.env[key]) throw new Error(`Missing required environment variable: ${key}`);
 }
@@ -62,7 +62,7 @@ const RevokedToken = mongoose.model("RevokedToken", revokedSchema, "revoked_toke
 
 const publicUrl = process.env.PUBLIC_URL.replace(/\/$/, "");
 const redirectUri = `${publicUrl}/auth/google/callback`;
-const google = new OAuth2Client(process.env.GOOGLE_CLIENT_ID, process.env.GOOGLE_CLIENT_SECRET, redirectUri);
+const google = new OAuth2Client(process.env.MONSTER_GOOGLE_CLIENT_ID, process.env.MONSTER_GOOGLE_CLIENT_SECRET, redirectUri);
 
 function appRedirect(appId, values) {
   const config = apps[appId];
@@ -89,7 +89,7 @@ async function verifyMonsterSession(token) {
   } catch (_) { throw new PaymentError(401, "google_login_required", "Sign in with Google to purchase."); }
 }
 const monsterAuth = createMonsterAuth({ connection: monsterConnection, google,
-  clientId: process.env.GOOGLE_CLIENT_ID, users: () => usersFor("monstermerge"), issueToken,
+  clientId: process.env.MONSTER_GOOGLE_CLIENT_ID, users: () => usersFor("monstermerge"), issueToken,
   verifySession: verifyMonsterSession });
 app.use("/auth/monster", monsterAuth.router);
 app.use("/auth/monster/profile",createMonsterProfile({users:()=>usersFor("monstermerge"),verifySession:verifyMonsterSession,payments:payments.service,mode:payments.service.config.mode}));
@@ -134,7 +134,7 @@ app.get("/auth/google/callback", async (req, res) => {
     if (!stateRecord || !req.query.code) return res.status(400).send("Login request expired. Return to the game and try again.");
     const appId = stateRecord.appId;
     const { tokens } = await google.getToken(req.query.code);
-    const ticket = await google.verifyIdToken({ idToken: tokens.id_token, audience: process.env.GOOGLE_CLIENT_ID });
+    const ticket = await google.verifyIdToken({ idToken: tokens.id_token, audience: process.env.MONSTER_GOOGLE_CLIENT_ID });
     const profile = ticket.getPayload();
     if (!profile || !profile.sub || !profile.email_verified) {
       return res.redirect(appRedirect(appId, { error: "unverified_email" }));
@@ -161,7 +161,7 @@ app.post("/auth/google/native", async (req, res) => {
     if (!apps[appId]) return res.status(400).json({ ok: false, message: "Unknown app" });
     if (!idToken || idToken.length > 10000) return res.status(400).json({ ok: false, message: "Missing identity token" });
 
-    const ticket = await google.verifyIdToken({ idToken, audience: process.env.GOOGLE_CLIENT_ID });
+    const ticket = await google.verifyIdToken({ idToken, audience: process.env.MONSTER_GOOGLE_CLIENT_ID });
     const profile = ticket.getPayload();
     if (!profile || !profile.sub || !profile.email_verified) {
       return res.status(401).json({ ok: false, message: "Google account is not verified" });

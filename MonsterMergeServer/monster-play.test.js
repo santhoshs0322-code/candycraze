@@ -63,7 +63,7 @@ test('routes require Google session and old PayU checkout is absent',async()=>{
 });
 test('complete auth service starts with Play billing and rejects retired checkout',async()=>{
  const port=await freePort();
- const child=spawn(process.execPath,['server.js'],{cwd:__dirname,windowsHide:true,stdio:'ignore',env:{...process.env,MONGODB_URI:uri,MONSTER_MONGODB_DATABASE:'monster_play_boot',PORT:String(port),GOOGLE_CLIENT_ID:'fixture',GOOGLE_CLIENT_SECRET:'fixture',JWT_SECRET:'fixture-secret-longer-than-thirty-two-characters',PUBLIC_URL:'https://example.test',MONSTER_PLAY_ENABLED:'false'}});
+ const child=spawn(process.execPath,['server.js'],{cwd:__dirname,windowsHide:true,stdio:'ignore',env:{...process.env,MONGODB_URI:uri,MONSTER_MONGODB_DATABASE:'monster_play_boot',PORT:String(port),MONSTER_GOOGLE_CLIENT_ID:'fixture',MONSTER_GOOGLE_CLIENT_SECRET:'fixture',JWT_SECRET:'fixture-secret-longer-than-thirty-two-characters',PUBLIC_URL:'https://example.test',MONSTER_PLAY_ENABLED:'false'}});
  try {
   const base=`http://127.0.0.1:${port}`;let ready=false;
   for(let i=0;i<100;i++){try{ready=(await fetch(base+'/health')).ok;}catch{}if(ready)break;await new Promise(r=>setTimeout(r,100));}
