@@ -25,3 +25,6 @@ Monster Merge reads only MONSTER_GOOGLE_CLIENT_ID and MONSTER_GOOGLE_CLIENT_SECR
 
 ## Native login endpoints
 GET /auth/monster/config exposes only the public server OAuth client ID. POST /auth/monster/play-games accepts authorizationCode, exchanges it server-side, retrieves the Play Games player identity, and returns the app session. Client-supplied player IDs are not trusted. Existing browser endpoints remain for older builds. Native profiles do not automatically merge with prior OpenID profiles. Native login does not require the browser redirect URI; the legacy browser endpoint still does.
+
+## Purchases disabled after successful sign-in
+Sign-in does not enable billing. If /payments/health returns paymentsEnabled:false, set MONSTER_PLAY_ENABLED=true in the Render service after configuring MONSTER_PLAY_SERVICE_ACCOUNT_EMAIL and MONSTER_PLAY_SERVICE_ACCOUNT_PRIVATE_KEY with access to Monster Merge's Play package. Activate the starter, adventurer, champion and legend one-time products and their buy options in Play Console. The wallet endpoint reports paymentsEnabled for client UI; it continues to return balances when checkout is disabled. No secret values or dashboard settings are changed by a source push.

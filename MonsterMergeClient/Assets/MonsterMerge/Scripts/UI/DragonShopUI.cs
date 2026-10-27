@@ -85,13 +85,12 @@ namespace MonsterMerge
         }
         void ConfirmDragonPurchase(MonsterDefinition dragon,bool upgrade)
         {
-            if(!RequireGoogleLogin(()=>ConfirmDragonPurchase(dragon,upgrade)))return;
             int cost=upgrade?app.Save.UpgradeCost(dragon.id):dragon.unlockCost;
             if(cost>app.Save.Data.coins)
             {
-                purchaseNotice="You need "+(cost-app.Save.Data.coins).ToString("N0")+" more coins.";
-                ShowDragonDetails(dragon); return;
+                ShowInsufficientCoins(cost,()=>ShowDragonDetails(dragon)); return;
             }
+            if(!RequireGoogleLogin(()=>ConfirmDragonPurchase(dragon,upgrade)))return;
             Page(true); Header("CONFIRM PURCHASE",()=>ShowDragonDetails(dragon));
             Portrait(page,dragon.id,.30f,.60f,.40f,.19f,Color.white);
             TextAt(upgrade?"UPGRADE "+dragon.displayName: "UNLOCK "+dragon.displayName,.07f,.515f,.86f,.065f,26,Color.white).fontStyle=FontStyle.Bold;
@@ -107,6 +106,17 @@ namespace MonsterMerge
                 ShowDragonDetails(dragon);
             },Gold);
             ButtonAt("CANCEL",.1f,.115f,.8f,.06f,()=>ShowDragonDetails(dragon),Color.white);
+        }
+        void ShowInsufficientCoins(int cost,Action back)
+        {
+            Page(true);Header("NEED MORE COINS?",back);
+            Panel("Coin offer",.07f,.17f,.86f,.59f,new Color(1,.98f,.91f));
+            Emblem(page,0,Gold,.37f,.62f,.26f,.11f);
+            TextAt("NOT ENOUGH COINS",.10f,.53f,.80f,.07f,28,Ink);
+            TextAt("You need "+Mathf.Max(0,cost-app.Save.Data.coins).ToString("N0")+" more coins.",.1f,.465f,.8f,.045f,20,Ink);
+            TextAt("Your balance: "+app.Save.Data.coins.ToString("N0")+" coins\nChoose a coin pack, or keep playing to earn more.",.1f,.36f,.8f,.08f,15,Ink);
+            ButtonAt("GET COINS / VIEW PACKS",.12f,.265f,.76f,.075f,ShowCoinShop,Gold);
+            ButtonAt("KEEP PLAYING",.12f,.18f,.76f,.06f,()=>{if(run)ShowReplayLevels();else ShowHome();},Mint);
         }
         public void ShowShop()
         {

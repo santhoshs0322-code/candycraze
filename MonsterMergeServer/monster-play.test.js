@@ -94,3 +94,9 @@ test('native login preserves stable game accounts and does not expose secrets',a
   assert.equal(await model.countDocuments(),1);assert.equal((await model.findOne()).googleSub,'playgames:native-player');
  }finally{await new Promise(resolve=>server.close(resolve));}
 });
+
+test('wallet reports checkout availability while preserving balances when disabled',async()=>{
+ const enabled=await service.wallet(owner);assert.equal(enabled.paymentsEnabled,true);
+ const disabled=new PlayBilling({...options(),env:{MONSTER_PLAY_ENABLED:'false'}});
+ const wallet=await disabled.wallet(owner);assert.equal(wallet.success,true);assert.equal(wallet.paymentsEnabled,false);assert.equal(wallet.creditedCoinsTotal,enabled.creditedCoinsTotal);
+});

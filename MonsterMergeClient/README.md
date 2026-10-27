@@ -19,3 +19,6 @@ Validation: Java bridge compilation against cached Google Play SDK 22.0.0, Unity
 
 ## Automatic Android versioning
 AutoBuildVersion runs for Android builds from the Build window, Build and Run, and scripted BuildPipeline builds. After configuration checks pass, it increments the patch version and Android bundle version code and persists the values. Example: 0.1.0 / 1 becomes 0.1.1 / 2. Later build failures keep the increment; validation failures before this callback do not consume a number. Non-Android builds are unchanged. ProjectBuilder no longer resets an existing version. Set the starting build number at least as high as any version already uploaded to Play before using this hook. Editor compilation passed; a complete Unity build has not been run for this change.
+
+## Insufficient coins and purchase availability
+Unlocking/upgrading without enough coins opens an offer with View Packs and Keep Playing. The post-win upgrade button remains actionable when coins are insufficient. No purchase starts until the player selects and confirms a pack. Wallet responses include paymentsEnabled, and the client uses it to disable unavailable checkout with a clear explanation. This UI change needs a new Android build.

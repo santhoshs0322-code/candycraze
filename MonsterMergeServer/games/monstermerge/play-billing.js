@@ -26,7 +26,7 @@ class PlayBilling {
   async wallet(id) {
     await this.syncProfile(id);
     const user = await this.profiles().findById(id).lean();
-    return {success:true, accountId:user.profile?.save?.paymentAccountId || user.payments.live.accounts[0],
+    return {success:true, paymentsEnabled:this.config.enabled, accountId:user.profile?.save?.paymentAccountId || user.payments.live.accounts[0],
       creditedCoinsTotal:user.payments?.live?.creditedCoinsTotal || 0};
   }
   async purchase(id, productId, token) {
