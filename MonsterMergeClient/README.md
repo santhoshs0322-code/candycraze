@@ -22,3 +22,6 @@ AutoBuildVersion runs for Android builds from the Build window, Build and Run, a
 
 ## Insufficient coins and purchase availability
 Unlocking/upgrading without enough coins opens an offer with View Packs and Keep Playing. The post-win upgrade button remains actionable when coins are insufficient. No purchase starts until the player selects and confirms a pack. Wallet responses include paymentsEnabled, and the client uses it to disable unavailable checkout with a clear explanation. This UI change needs a new Android build.
+
+## App icon
+The supplied dragon store artwork is copied to Assets/MonsterMerge/Art/AppIcon.png. AppIconBuild applies it to the default, Android legacy, round and adaptive icon slots before every Android build. Use Monster Merge > Apply Dragon App Icon to apply it in the Editor without building. Editor compilation passed; verify cropping on the target launcher after rebuilding.
