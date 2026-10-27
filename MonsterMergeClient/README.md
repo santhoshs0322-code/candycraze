@@ -31,3 +31,6 @@ The Replay Levels / Earn Coins button has extra height and spacing on the home s
 
 ## Distinct levels, upgrade celebration and dragon art
 Gameplay creates a stable per-level challenge layout with a challenge title and tip at the start of each run. Winning still leads to the next-adventure upgrade choice; completing an upgrade now shows a before/after stage reveal, species-specific upgrade text and celebration effects, followed by a button to start the next level and its 3-2-1 countdown. The generated anime fantasy portrait atlas is used on the home, collection, shop and upgrade screens; source prompt is included under Assets/MonsterMerge/Art.
+
+## In-game dragon animation
+During active touch movement, grounded dragons use stronger synchronized wing beats, coordinated tail sway and head motion; flying animations remain tied to flight. The playable 3D dragon rig animates at runtime and stops its run cycle when the player releases touch.
