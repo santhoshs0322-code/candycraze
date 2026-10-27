@@ -56,7 +56,9 @@ namespace MonsterMerge
             TextAt(DragonProgression.Species(dragon.id),.40f,.81f,.56f,.105f,10,Gold,hero);
             TextAt(DragonProgression.PowerName(dragon),.40f,.62f,.56f,.16f,20,Mint,hero).fontStyle=FontStyle.Bold;
             TextAt(DragonProgression.PowerDescription(dragon,shown),.40f,.20f,.56f,.38f,14,Color.white,hero);
-            TextAt("PREVIEW "+shown+"  /  ATK "+Mathf.RoundToInt(dragon.baseAttack*DragonProgression.AttackMultiplier(shown))+"  HP "+Mathf.RoundToInt(dragon.baseHealth*DragonProgression.HealthMultiplier(shown)),.40f,.055f,.56f,.10f,11,Gold,hero);
+            float baseAttack=dragon.baseAttack+app.Save.Data.attack*app.catalog.attackPerUpgrade;
+            float baseHealth=dragon.baseHealth+app.Save.Data.health*app.catalog.healthPerUpgrade;
+            TextAt("PREVIEW STAGE "+shown+"  /  ATK "+Mathf.RoundToInt(baseAttack*DragonProgression.AttackMultiplier(shown))+"  HP "+Mathf.RoundToInt(baseHealth*DragonProgression.HealthMultiplier(shown)),.40f,.055f,.56f,.10f,10,Gold,hero);
             TextAt("Choose a stage to see your dragon grow",.07f,.49f,.86f,.027f,11,Gold);
             for(int i=1;i<=4;i++)
             {
@@ -69,8 +71,10 @@ namespace MonsterMerge
                 TextAt(i==1?"START":DragonProgression.StageCost(dragon,i-1).ToString("N0")+" C",.025f,.07f,.95f,.19f,9,Gold,tile);
             }
             int nextCost=app.Save.UpgradeCost(dragon.id);
-            string details=!owned?"Begin your journey together as a Hatchling.":stage>=4?"Ancient form reached. Your dragon is at full strength.":"NEXT: "+DragonProgression.PowerDescription(dragon,stage+1);
-            TextAt(details,.085f,.303f,.83f,.07f,14,Color.white);
+            string details=!owned?"Begin your journey together as a Hatchling.":stage>=4?"Ancient form reached. Your dragon is at full strength.":shown>stage
+                ?"CURRENT: "+DragonProgression.PowerDescription(dragon,stage)+"\nSTAGE "+shown+": "+DragonProgression.PowerDescription(dragon,shown)
+                :"NEXT STAGE BOOST: "+DragonProgression.PowerUpgradeDelta(dragon.id);
+            TextAt(details,.075f,.298f,.85f,.075f,12,shown>stage?Mint:Color.white);
             if(!owned)
                 ButtonAt("BUY / "+dragon.unlockCost.ToString("N0")+" COINS",.09f,.22f,.82f,.065f,()=>ConfirmDragonPurchase(dragon,false),Gold);
             else
@@ -92,12 +96,33 @@ namespace MonsterMerge
             }
             if(!RequireGoogleLogin(()=>ConfirmDragonPurchase(dragon,upgrade)))return;
             Page(true); Header("CONFIRM PURCHASE",()=>ShowDragonDetails(dragon));
-            Portrait(page,dragon.id,.30f,.60f,.40f,.19f,Color.white);
-            TextAt(upgrade?"UPGRADE "+dragon.displayName: "UNLOCK "+dragon.displayName,.07f,.515f,.86f,.065f,26,Color.white).fontStyle=FontStyle.Bold;
-            TextAt(upgrade?"Stage "+app.Save.Stage(dragon.id)+"  >  Stage "+(app.Save.Stage(dragon.id)+1):"Stage 1 - "+DragonProgression.StageName(1),.1f,.457f,.8f,.035f,17,Mint);
-            TextAt(cost.ToString("N0")+" COINS",.1f,.37f,.8f,.065f,32,Gold);
-            TextAt("Balance after purchase: "+(app.Save.Data.coins-cost).ToString("N0")+" coins",.08f,.315f,.84f,.035f,15,Color.white);
-            ButtonAt("CONFIRM / "+cost.ToString("N0")+" COINS",.1f,.215f,.8f,.07f,()=>
+            if(upgrade)
+            {
+                int from=app.Save.Stage(dragon.id),to=from+1;
+                var preview=Panel("Upgrade form comparison",.07f,.67f,.86f,.13f,new Color(1,.985f,.94f));
+                Portrait(preview,dragon.id,.03f,.12f,.38f,.76f,Color.white,from);
+                Portrait(preview,dragon.id,.59f,.12f,.38f,.76f,Color.white,to);
+                TextAt("CURRENT / STAGE "+from,.02f,.01f,.40f,.10f,11,Ink,preview);
+                TextAt("NEXT / STAGE "+to,.58f,.01f,.40f,.10f,11,Ink,preview);
+                TextAt(">",.45f,.32f,.10f,.36f,25,Gold,preview);
+                TextAt("UPGRADE "+dragon.displayName,.07f,.615f,.86f,.04f,23,Color.white).fontStyle=FontStyle.Bold;
+                TextAt(DragonProgression.VisualUpgrade(dragon.id,to),.07f,.58f,.86f,.028f,12,Gold);
+                DrawUpgradePowerComparison(dragon,from,to,.40f,.15f);
+                TextAt("POWER BOOST: "+DragonProgression.PowerUpgradeDelta(dragon.id),.07f,.365f,.86f,.027f,12,Mint);
+                TextAt(UpgradeStatComparison(dragon,from,to),.07f,.335f,.86f,.026f,11,Color.white);
+                TextAt("PRICE: "+cost.ToString("N0")+" COINS",.1f,.285f,.8f,.04f,22,Gold);
+                TextAt("Balance after upgrade: "+(app.Save.Data.coins-cost).ToString("N0")+" coins",.08f,.245f,.84f,.03f,13,Color.white);
+            }
+            else
+            {
+                Portrait(page,dragon.id,.30f,.60f,.40f,.19f,Color.white);
+                TextAt("UNLOCK "+dragon.displayName,.07f,.515f,.86f,.065f,26,Color.white).fontStyle=FontStyle.Bold;
+                TextAt("Stage 1 - "+DragonProgression.StageName(1),.1f,.457f,.8f,.035f,17,Mint);
+                TextAt(cost.ToString("N0")+" COINS",.1f,.37f,.8f,.065f,32,Gold);
+                TextAt("Balance after purchase: "+(app.Save.Data.coins-cost).ToString("N0")+" coins",.08f,.315f,.84f,.035f,15,Color.white);
+            }
+            float confirmY=upgrade ? .15f : .215f,cancelY=upgrade ? .07f : .115f;
+            ButtonAt("CONFIRM / "+cost.ToString("N0")+" COINS",.1f,confirmY,.8f,.07f,()=>
             {
                 if(!RequireGoogleLogin(()=>ConfirmDragonPurchase(dragon,upgrade)))return;
                 bool success=upgrade?app.Save.TryUpgrade(dragon):app.Save.TryUnlock(dragon);
@@ -109,7 +134,7 @@ namespace MonsterMerge
                 }
                 ShowDragonDetails(dragon);
             },Gold);
-            ButtonAt("CANCEL",.1f,.115f,.8f,.06f,()=>ShowDragonDetails(dragon),Color.white);
+            ButtonAt("CANCEL",.1f,cancelY,.8f,.06f,()=>ShowDragonDetails(dragon),Color.white);
         }
         void ShowInsufficientCoins(int cost,Action back)
         {

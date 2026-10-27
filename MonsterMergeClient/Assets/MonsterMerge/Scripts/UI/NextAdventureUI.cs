@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
@@ -33,20 +33,26 @@ namespace MonsterMerge
             Page(true);Header("YOUR NEXT ADVENTURE",()=>{if(run)ShowResult();else ShowHome();});
             bool blocked=!RunRules.CanPlay(app.Save.Data.level,stage);
             TextAt(blocked?"LEVEL "+app.Save.Data.level+" NEEDS STAGE "+RunRules.RequiredStage(app.Save.Data.level):"LEVEL "+app.Save.Data.level+" AWAITS",.1f,.77f,.8f,.04f,22,Ink);
-            var card=Panel("Evolution preview",.07f,.39f,.86f,.35f,new Color(1,.985f,.94f));
-            Portrait(card,dragon.id,.02f,.16f,.43f,.72f,Color.white,stage);
-            Portrait(card,dragon.id,.55f,.16f,.43f,.72f,Color.white,next);
-            TextAt("NOW / STAGE "+stage,.08f,.07f,.34f,.08f,13,Ink,card);
-            TextAt(stage<4?"NEW FORM / STAGE "+next:"ANCIENT FORM",.55f,.07f,.40f,.08f,12,Ink,card);
-            TextAt(">",.46f,.39f,.08f,.18f,28,Gold,card);
-            TextAt(dragon.displayName+" • "+DragonProgression.StageName(next),.09f,.33f,.82f,.05f,21,Ink);
-            TextAt(DragonProgression.VisualUpgrade(dragon.id,next),.09f,.285f,.82f,.04f,14,Ink);
-            TextAt(stage<4?DragonProgression.PowerDescription(dragon,next):"Your dragon has reached its final form. Keep exploring!",.08f,.22f,.84f,.055f,13,Ink);
+            var card=Panel("Evolution preview",.07f,.50f,.86f,.24f,new Color(1,.985f,.94f));
+            Portrait(card,dragon.id,.04f,.15f,.38f,.72f,Color.white,stage);
+            Portrait(card,dragon.id,.58f,.15f,.38f,.72f,Color.white,next);
+            TextAt("CURRENT / STAGE "+stage,.03f,.02f,.40f,.13f,12,Ink,card);
+            TextAt(stage<4?"NEXT / STAGE "+next:"ANCIENT / MAX",.57f,.02f,.40f,.13f,12,Ink,card);
+            TextAt(">",.45f,.35f,.10f,.25f,28,Gold,card);
+            TextAt(dragon.displayName+" / "+DragonProgression.StageName(stage)+" to "+DragonProgression.StageName(next),.08f,.46f,.84f,.035f,17,Ink);
+            TextAt(DragonProgression.VisualUpgrade(dragon.id,next),.08f,.43f,.84f,.025f,12,Gold);
+            if(stage<4)
+            {
+                DrawUpgradePowerComparison(dragon,stage,next,.275f,.14f);
+                TextAt("POWER BOOST: "+DragonProgression.PowerUpgradeDelta(dragon.id),.07f,.244f,.86f,.027f,12,Mint);
+                TextAt(UpgradeStatComparison(dragon,stage,next),.07f,.215f,.86f,.026f,11,Ink);
+            }
+            else TextAt("ANCIENT FORM / MAX POWER",.08f,.30f,.84f,.08f,19,Gold);
             if(stage<4)
             {
                 bool affordable=app.Save.Data.coins>=cost;
                 string owner=app.Save.Data.googleUserId;
-                ButtonAt(affordable?"UPGRADE / "+cost.ToString("N0")+" COINS":"GET COINS TO UPGRADE",.10f,.16f,.80f,.055f,()=>
+                ButtonAt(affordable?"UPGRADE / "+cost.ToString("N0")+" COINS":"GET COINS TO UPGRADE",.10f,.15f,.80f,.055f,()=>
                 {
                     if(advancingToNextLevel)return;
                     if(app.Save.Data.coins<cost){ShowInsufficientCoins(cost,ShowPostLevelUpgrade);return;}
@@ -58,9 +64,9 @@ namespace MonsterMerge
                     app.Audio.Play(app.catalog.evolution);ShowUpgradeCelebration(dragon,stage,stage+1,cost,StartNextAdventure);
                 },Gold);
             }
-            ButtonAt("BUY COINS",.10f,.095f,.38f,.055f,ShowCoinShop,Gold);
-            ButtonAt("REPLAY LEVELS",.52f,.095f,.38f,.055f,ShowReplayLevels,Color.white);
-            ButtonAt(blocked?"REPLAY & EARN UPGRADE COINS":stage<4?"SKIP & PLAY NEXT LEVEL":"PLAY NEXT LEVEL",.10f,.025f,.80f,.055f,()=>{if(blocked)ShowReplayLevels();else StartNextAdventure();},Mint);
+            ButtonAt("BUY COINS",.10f,.08f,.38f,.055f,ShowCoinShop,Gold);
+            ButtonAt("REPLAY LEVELS",.52f,.08f,.38f,.055f,ShowReplayLevels,Color.white);
+            ButtonAt(blocked?"REPLAY & EARN UPGRADE COINS":stage<4?"SKIP & PLAY NEXT LEVEL":"PLAY NEXT LEVEL",.10f,.01f,.80f,.055f,()=>{if(blocked)ShowReplayLevels();else StartNextAdventure();},Mint);
         }
         void PlayLevel(int level)
         {
@@ -70,18 +76,42 @@ namespace MonsterMerge
         {
             Page(true);Header("EVOLUTION COMPLETE",()=>ShowPostLevelUpgrade());
             TextAt("HURRAY! A NEW FORM!",.08f,.79f,.84f,.055f,28,Gold).fontStyle=FontStyle.Bold;
-            var card=Panel("Evolution celebration",.07f,.39f,.86f,.36f,new Color(1,.985f,.94f));
-            Portrait(card,dragon.id,.03f,.16f,.40f,.72f,Color.white,fromStage);
-            Portrait(card,dragon.id,.57f,.16f,.40f,.72f,Color.white,toStage);
-            TextAt("STAGE "+fromStage,.04f,.04f,.38f,.09f,14,Ink,card);
-            TextAt("STAGE "+toStage,.58f,.04f,.38f,.09f,14,Ink,card);
+            var card=Panel("Evolution celebration",.07f,.54f,.86f,.21f,new Color(1,.985f,.94f));
+            Portrait(card,dragon.id,.04f,.12f,.38f,.74f,Color.white,fromStage);
+            Portrait(card,dragon.id,.58f,.12f,.38f,.74f,Color.white,toStage);
+            TextAt("STAGE "+fromStage,.03f,.01f,.40f,.10f,12,Ink,card);
+            TextAt("STAGE "+toStage,.57f,.01f,.40f,.10f,12,Ink,card);
             TextAt("*",.45f,.35f,.10f,.30f,40,Gold,card);
-            TextAt(dragon.displayName+" / "+DragonProgression.StageName(toStage),.08f,.315f,.84f,.05f,22,Ink);
-            TextAt(DragonProgression.VisualUpgrade(dragon.id,toStage),.08f,.265f,.84f,.04f,14,Ink);
-            TextAt("NEW POWER: "+DragonProgression.PowerDescription(dragon,toStage)+"  /  SPENT "+cost.ToString("N0")+" COINS",.08f,.20f,.84f,.05f,12,Ink);
-            ButtonAt("START LEVEL "+app.Save.Data.level,.10f,.09f,.80f,.07f,continueAction,Mint);
-            TextAt("Your next run begins with a 3 / 2 / 1 countdown.",.08f,.035f,.84f,.04f,12,Ink);
+            TextAt(dragon.displayName+" / "+DragonProgression.StageName(toStage),.08f,.49f,.84f,.035f,17,Ink);
+            TextAt(DragonProgression.VisualUpgrade(dragon.id,toStage),.08f,.46f,.84f,.025f,12,Gold);
+            DrawUpgradePowerComparison(dragon,fromStage,toStage,.31f,.14f);
+            TextAt("POWER BOOST: "+DragonProgression.PowerUpgradeDelta(dragon.id),.07f,.278f,.86f,.027f,12,Mint);
+            TextAt(UpgradeStatComparison(dragon,fromStage,toStage),.07f,.248f,.86f,.026f,11,Ink);
+            TextAt("UPGRADE COST: "+cost.ToString("N0")+" COINS",.08f,.215f,.84f,.026f,11,Gold);
+            ButtonAt("START LEVEL "+app.Save.Data.level,.10f,.14f,.80f,.06f,continueAction,Mint);
+            TextAt("Next run countdown: 3 / 2 / 1",.08f,.09f,.84f,.04f,12,Ink);
             page.gameObject.AddComponent<UpgradeConfetti>().Play(page);
+        }
+
+        void DrawUpgradePowerComparison(MonsterDefinition dragon,int fromStage,int toStage,float y,float height)
+        {
+            var before=Panel("Current power",.07f,y,.41f,height,new Color(.91f,.94f,.97f));
+            var after=Panel("Upgraded power",.52f,y,.41f,height,new Color(.80f,.98f,.89f));
+            TextAt("CURRENT / STAGE "+fromStage+" / "+DragonProgression.PowerTitle(dragon.id),.035f,.68f,.93f,.25f,9,Ink,before).fontStyle=FontStyle.Bold;
+            TextAt(DragonProgression.PowerDescription(dragon,fromStage),.05f,.08f,.90f,.56f,11,Ink,before);
+            TextAt("UPGRADED / STAGE "+toStage+" / "+DragonProgression.PowerTitle(dragon.id),.035f,.68f,.93f,.25f,9,new Color(.04f,.39f,.24f),after).fontStyle=FontStyle.Bold;
+            TextAt(DragonProgression.PowerDescription(dragon,toStage),.05f,.08f,.90f,.56f,11,new Color(.04f,.39f,.24f),after);
+        }
+
+        string UpgradeStatComparison(MonsterDefinition dragon,int fromStage,int toStage)
+        {
+            float baseAttack=dragon.baseAttack+app.Save.Data.attack*app.catalog.attackPerUpgrade;
+            float baseHealth=dragon.baseHealth+app.Save.Data.health*app.catalog.healthPerUpgrade;
+            int oldAttack=Mathf.RoundToInt(baseAttack*DragonProgression.AttackMultiplier(fromStage));
+            int newAttack=Mathf.RoundToInt(baseAttack*DragonProgression.AttackMultiplier(toStage));
+            int oldHealth=Mathf.RoundToInt(baseHealth*DragonProgression.HealthMultiplier(fromStage));
+            int newHealth=Mathf.RoundToInt(baseHealth*DragonProgression.HealthMultiplier(toStage));
+            return "ATK "+oldAttack+" -> "+newAttack+" (+"+(newAttack-oldAttack)+")   HP "+oldHealth+" -> "+newHealth+" (+"+(newHealth-oldHealth)+")";
         }
         void ShowReplayLevels() { ShowReplayPage(0); }
         void ShowReplayPage(int pageIndex)
