@@ -41,7 +41,6 @@ namespace MonsterMerge
         float countdownRemaining=3;
         bool countdownPaused, countdownUnfocused;
         public bool IsBoss => State == GameState.BossBattle || (State == GameState.Defeat && defeatState == GameState.BossBattle);
-        void OnDestroy() { if(Level)Destroy(Level); }
         void Start()
         {
             app = GameApp.Instance;
@@ -248,6 +247,11 @@ namespace MonsterMerge
             countdownUnfocused=!focused;
             if(State==GameState.Preparing && !focused)countdownRemaining=3;
         }
-        void OnDestroy() { Time.timeScale = 1; if (Player) Player.Evolved -= Evolve; }
+        void OnDestroy()
+        {
+            Time.timeScale=1;
+            if(Player)Player.Evolved-=Evolve;
+            if(Level)Destroy(Level);
+        }
     }
 }
