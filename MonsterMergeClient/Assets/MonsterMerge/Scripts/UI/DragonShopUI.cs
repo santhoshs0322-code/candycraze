@@ -151,7 +151,8 @@ namespace MonsterMerge
                 packButtons.Add(ButtonAt("BUY / "+pack.Price,.23f,.08f,.71f,.26f,()=>ConfirmCoinPack(selected),Gold,row,payments.Ready && !payments.Busy && !string.IsNullOrEmpty(pack.localizedPrice)));
             }
             paymentRefresh=ButtonAt("RESTORE PURCHASES",.08f,.185f,.84f,.052f,payments.Refresh,Mint,null,payments.Configured && !payments.Busy);
-            TextAt("Your coins arrive after purchase verification.\nSign in with Google to keep purchases linked to you.",.07f,.033f,.86f,.06f,11,new Color(.59f,.70f,.80f));
+            string account=app.GoogleLogin.IsSignedIn&&app.GoogleLogin.User!=null?app.GoogleLogin.User.name:"your Google account";
+            TextAt("Your coins arrive after purchase verification.\nSigned in as "+account+".",.07f,.033f,.86f,.06f,11,new Color(.59f,.70f,.80f));
         }
         void ConfirmCoinPack(CoinPack pack)
         {

@@ -11,6 +11,14 @@ namespace MonsterMerge
         Text googleStatus,homeAccountLabel;
         string previewAccount;
         Button googleSignIn,googleCheck;
+        string AccountButtonText()
+        {
+            var login=app.GoogleLogin;
+            if(login==null||!login.IsSignedIn)return "SIGN IN";
+            string name=login.User==null?"":(login.User.name??"").Trim();
+            if(string.IsNullOrEmpty(name))return "SIGNED IN";
+            return name.Length>12?name.Substring(0,11)+"…":name;
+        }
         bool RequireGoogleLogin(Action next)
         {
             if(app.GoogleLogin && app.GoogleLogin.IsSignedIn)return true;
@@ -20,7 +28,7 @@ namespace MonsterMerge
         {
             var login=app.GoogleLogin;if(!login)return;
             if(previewAccount!=app.Save.Data.googleUserId){previewAccount=app.Save.Data.googleUserId;RefreshPreview();}
-            if(homeAccountLabel)homeAccountLabel.text=login.IsSignedIn?"ACCOUNT":"SIGN IN";
+            if(homeAccountLabel)homeAccountLabel.text=AccountButtonText();
             if(googleStatus)googleStatus.text=login.Status;
             if(googleSignIn)googleSignIn.interactable=login.Available&&!login.Busy&&!login.Waiting;
             if(googleCheck)googleCheck.interactable=login.Available&&!login.Busy;

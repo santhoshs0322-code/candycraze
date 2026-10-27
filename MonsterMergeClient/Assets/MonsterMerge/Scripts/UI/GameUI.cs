@@ -174,7 +174,7 @@ namespace MonsterMerge
             Page(false);
             var coin=Panel("Coin wallet",.055f,.946f,.32f,.038f,new Color(.06f,.09f,.15f,.95f));
             Emblem(coin,0,Gold,.025f,.06f,.18f,.88f); currencyLabel=TextAt(app.Save.Data.coins+" COINS",.22f,0,.74f,1,15,Gold,coin);
-            homeAccountLabel=ButtonAt(app.GoogleLogin.IsSignedIn?"ACCOUNT":"SIGN IN",.395f,.946f,.245f,.038f,()=>ShowGoogleLogin(),Color.white).GetComponentInChildren<Text>();
+            homeAccountLabel=ButtonAt(AccountButtonText(),.395f,.946f,.245f,.038f,()=>ShowGoogleLogin(),Color.white).GetComponentInChildren<Text>();
             var gem=Panel("Gem wallet",.66f,.946f,.285f,.038f,new Color(.06f,.09f,.15f,.95f));
             Emblem(gem,1,Mint,.025f,.06f,.20f,.88f); TextAt(app.Save.Data.gems.ToString(),.24f,0,.7f,1,17,Mint,gem);
             TextAt("MONSTER\nMERGE",.08f,.825f,.84f,.112f,43,Gold);
