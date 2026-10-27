@@ -102,7 +102,11 @@ namespace MonsterMerge
                 if(!RequireGoogleLogin(()=>ConfirmDragonPurchase(dragon,upgrade)))return;
                 bool success=upgrade?app.Save.TryUpgrade(dragon):app.Save.TryUnlock(dragon);
                 purchaseNotice=success?(upgrade?"A new form, a stronger companion!":"Your new dragon is ready. Choose it to begin!"):"Not enough coins for this upgrade. Your balance is unchanged.";
-                if(success) { app.Audio.Play(app.catalog.evolution); RefreshPreview(); }
+                if(success)
+                {
+                    app.Audio.Play(app.catalog.evolution); RefreshPreview();
+                    if(upgrade){ShowUpgradeCelebration(dragon,app.Save.Stage(dragon.id)-1,app.Save.Stage(dragon.id),cost,()=>ShowDragonDetails(dragon));return;}
+                }
                 ShowDragonDetails(dragon);
             },Gold);
             ButtonAt("CANCEL",.1f,.115f,.8f,.06f,()=>ShowDragonDetails(dragon),Color.white);

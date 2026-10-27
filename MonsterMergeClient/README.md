@@ -28,3 +28,6 @@ The supplied dragon store artwork is copied to Assets/MonsterMerge/Art/AppIcon.p
 
 ## Home replay button layout
 The Replay Levels / Earn Coins button has extra height and spacing on the home screen so its label is readable and does not crowd adjacent menu buttons.
+
+## Distinct levels, upgrade celebration and dragon art
+Gameplay creates a stable per-level challenge layout with a challenge title and tip at the start of each run. Winning still leads to the next-adventure upgrade choice; completing an upgrade now shows a before/after stage reveal, species-specific upgrade text and celebration effects, followed by a button to start the next level and its 3-2-1 countdown. The generated anime fantasy portrait atlas is used on the home, collection, shop and upgrade screens; source prompt is included under Assets/MonsterMerge/Art.

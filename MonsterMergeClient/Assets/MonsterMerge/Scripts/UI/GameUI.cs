@@ -15,6 +15,7 @@ namespace MonsterMerge
         RectTransform safe, page, toastRoot;
         Font font, titleFont;
         Texture2D heroTexture;
+        static Texture2D dragonPortraitAtlas;
         Text toast;
         sealed class FloatingNumber { public TextMesh text; public Vector3 origin; public Color color; public float age = 2; }
         FloatingNumber[] floating;
@@ -77,9 +78,21 @@ namespace MonsterMerge
         {
             var monster=app.catalog.Monster(id);
             if(!monster)return;
-            var rect=Rect("Cartoon dragon portrait",parent); Anchor(rect,x,y,x+w,y+h);
-            var portrait=rect.gameObject.AddComponent<CartoonDragonPortrait>();
-            portrait.color=monster.color;portrait.species=id;portrait.stage=previewStage>0?previewStage:app.Save.Stage(id);
+            var rect=Rect("Anime dragon portrait",parent); Anchor(rect,x,y,x+w,y+h);
+            if(!dragonPortraitAtlas)dragonPortraitAtlas=Resources.Load<Texture2D>("Dragons/AnimeDragonAtlas");
+            int species=Array.IndexOf(new[]{"dragon","shark","slime","trex","panda","sharkdragon","cyberrex","ninjapanda"},id);
+            if(dragonPortraitAtlas&&species>=0)
+            {
+                var portrait=rect.gameObject.AddComponent<RawImage>();portrait.texture=dragonPortraitAtlas;portrait.color=tint;portrait.raycastTarget=false;
+                int column=species%4,row=1-species/4;
+                portrait.uvRect=new Rect(column*.25f+.003f,row*.5f+.006f,.244f,.488f);
+                var fit=rect.gameObject.AddComponent<AspectRatioFitter>();fit.aspectMode=AspectRatioFitter.AspectMode.FitInParent;fit.aspectRatio=1.08f;
+            }
+            else
+            {
+                var portrait=rect.gameObject.AddComponent<CartoonDragonPortrait>();
+                portrait.color=monster.color;portrait.species=id;portrait.stage=previewStage>0?previewStage:app.Save.Stage(id);
+            }
         }
         Text Label(RectTransform parent,string value,int size,Color color,TextAnchor alignment = TextAnchor.MiddleCenter)
         {
@@ -180,8 +193,7 @@ namespace MonsterMerge
             TextAt("MONSTER\nMERGE",.08f,.825f,.84f,.112f,43,Gold);
             var subtitle=TextAt("AI EVOLUTION",.16f,.789f,.68f,.035f,20,Ink);subtitle.font=titleFont;
             TextAt("Explore ? Evolve ? Take Flight",.10f,.757f,.80f,.025f,13,Ink);
-            if(app.Save.Data.selected=="dragon")HeroArt(page,.10f,.413f,.80f,.335f);
-            else Portrait(page,app.Save.Data.selected,.14f,.413f,.72f,.335f,Color.white);
+            Portrait(page,app.Save.Data.selected,.10f,.413f,.80f,.335f,Color.white);
             var nameplate=Panel("Dragon nameplate",.22f,.358f,.56f,.052f,new Color(.025f,.045f,.085f,.88f));
             TextAt(app.catalog.Monster(app.Save.Data.selected).displayName.ToUpperInvariant(),.06f,.36f,.88f,.56f,21,Color.white,nameplate).fontStyle=FontStyle.Bold;
             TextAt("READY FOR YOUR NEXT ADVENTURE",.06f,.04f,.88f,.30f,9,Mint,nameplate);
