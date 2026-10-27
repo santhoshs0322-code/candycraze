@@ -34,3 +34,5 @@ Gameplay creates a stable per-level challenge layout with a challenge title and 
 
 ## In-game dragon animation
 During active touch movement, grounded dragons use stronger synchronized wing beats, coordinated tail sway and head motion; flying animations remain tied to flight. The playable 3D dragon rig animates at runtime and stops its run cycle when the player releases touch.
+
+Upgrade power growth differs at each transition (1 to 2, 2 to 3, and 3 to 4) for every dragon. Runtime power effects, descriptions, comparison deltas, and the upgrade confirmation screen use the same stage-specific values.

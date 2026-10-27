@@ -17,6 +17,16 @@ namespace MonsterMerge
             new Color(1,.34f,.13f), new Color(.13f,.68f,.79f), new Color(.47f,.86f,.23f), new Color(.65f,.45f,.25f),
             new Color(.56f,.91f,1), new Color(1,.84f,.19f), new Color(.54f,.67f,.79f), new Color(.63f,.32f,.91f)
         };
+        static readonly float[] attackMultipliers={1f,1.16f,1.36f,1.62f};
+        static readonly float[] healthMultipliers={1f,1.20f,1.46f,1.78f};
+        static readonly float[] flameDamage={.10f,.17f,.28f,.43f};
+        static readonly float[] tidalHealPerPower={.20f,.32f,.48f,.68f};
+        static readonly float[] venomDamagePerHit={.04f,.06f,.09f,.13f};
+        static readonly float[] stoneDamageReduction={.12f,.17f,.24f,.33f};
+        static readonly int[] frostBarrier={20,35,55,80};
+        static readonly float[] stormDamageBonus={.50f,.75f,1.10f,1.50f};
+        static readonly int[] coinBonus={10,18,29,43};
+        static readonly float[] shadowDamage={2f,2.5f,3.25f,4.25f};
 
         public static void Apply(GameCatalog catalog)
         {
@@ -87,8 +97,17 @@ namespace MonsterMerge
         { int index = Array.IndexOf(ids, id); return index < 0 ? -1 : prices[index]; }
         public static string StageName(int stage)
         { return new[] { "Hatchling", "Awakened", "Ascendant", "Ancient" }[Mathf.Clamp(stage, 1, MaxStage) - 1]; }
-        public static float AttackMultiplier(int stage) => 1 + (Mathf.Clamp(stage, 1, MaxStage) - 1) * .15f;
-        public static float HealthMultiplier(int stage) => 1 + (Mathf.Clamp(stage, 1, MaxStage) - 1) * .20f;
+        static int Tier(int stage)=>Mathf.Clamp(stage,1,MaxStage)-1;
+        public static float AttackMultiplier(int stage)=>attackMultipliers[Tier(stage)];
+        public static float HealthMultiplier(int stage)=>healthMultipliers[Tier(stage)];
+        public static float FlameDamageBonus(int stage)=>flameDamage[Tier(stage)];
+        public static float TidalHealPerPower(int stage)=>tidalHealPerPower[Tier(stage)];
+        public static float VenomDamagePerHit(int stage)=>venomDamagePerHit[Tier(stage)];
+        public static float StoneDamageReduction(int stage)=>stoneDamageReduction[Tier(stage)];
+        public static int FrostBarrier(int stage)=>frostBarrier[Tier(stage)];
+        public static float StormDamageBonus(int stage)=>stormDamageBonus[Tier(stage)];
+        public static int CoinBonusPercent(int stage)=>coinBonus[Tier(stage)];
+        public static float ShadowDamageMultiplier(int stage)=>shadowDamage[Tier(stage)];
         public static int StageCost(MonsterDefinition definition, int currentStage) => definition ? StageCost(definition.id, currentStage) : 0;
         public static int StageCost(string id, int currentStage)
         {
@@ -106,36 +125,38 @@ namespace MonsterMerge
         }
         public static string PowerTitle(string id)
         { int index = Array.IndexOf(ids, id); return index < 0 ? "Dragon Power" : titles[index]; }
-        public static string PowerUpgradeDelta(string id)
+        public static string PowerUpgradeDelta(string id,int fromStage,int toStage)
         {
+            int from=Tier(fromStage),to=Tier(toStage);
             switch(id)
             {
-                case "dragon":return "+5% flame damage on every hit";
-                case "shark":return "+1 HP restored per 10 power collected";
-                case "slime":return "+2% venom damage per hit";
-                case "trex":return "+4% damage reduction";
-                case "panda":return "+10 barrier at the start of each run";
-                case "sharkdragon":return "+15% lightning damage on every third hit";
-                case "cyberrex":return "+5% coins from track pickups";
-                case "ninjapanda":return "+0.25x damage on every fourth hit";
+                case "dragon":return "+"+Percent((flameDamage[to]-flameDamage[from])*100)+" percentage points of flame damage per hit";
+                case "shark":return "+"+Number((tidalHealPerPower[to]-tidalHealPerPower[from])*10)+" HP per 10 power collected";
+                case "slime":return "+"+Percent((venomDamagePerHit[to]-venomDamagePerHit[from])*100)+" percentage points of venom damage per hit";
+                case "trex":return "+"+Percent((stoneDamageReduction[to]-stoneDamageReduction[from])*100)+" percentage points of damage reduction";
+                case "panda":return "+"+(frostBarrier[to]-frostBarrier[from])+" starting barrier";
+                case "sharkdragon":return "+"+Percent((stormDamageBonus[to]-stormDamageBonus[from])*100)+" percentage points on every third hit";
+                case "cyberrex":return "+"+(coinBonus[to]-coinBonus[from])+" percentage points of track coins";
+                case "ninjapanda":return "+"+Number(shadowDamage[to]-shadowDamage[from])+"x damage on every fourth hit";
                 default:return "Your dragon's signature power becomes stronger";
             }
         }
+        static string Number(float value)=>value.ToString("0.#",System.Globalization.CultureInfo.InvariantCulture);
+        static string Percent(float value)=>Number(value);
         public static string PowerName(MonsterDefinition definition) => PowerTitle(definition ? definition.id : "");
         public static string PowerDescription(MonsterDefinition definition, int stage) => PowerDescription(definition ? definition.id : "", stage);
         public static string PowerDescription(string id, int stage)
         {
-            int tier = Mathf.Clamp(stage, 1, MaxStage) - 1;
             switch (id)
             {
-                case "dragon": return "Every hit deals " + (10 + tier * 5) + "% extra flame damage.";
-                case "shark": return "Each 10 power collected heals " + (2 + tier) + " HP.";
-                case "slime": return "Each hit adds " + (4 + tier * 2) + "% venom damage, stacking up to 5 hits.";
-                case "trex": return "Take " + (12 + tier * 4) + "% less damage from every hit.";
-                case "panda": return "Start each run with a barrier that absorbs " + (20 + tier * 10) + " damage.";
-                case "sharkdragon": return "Every third hit deals " + (50 + tier * 15) + "% extra lightning damage.";
-                case "cyberrex": return "Collect " + (10 + tier * 5) + "% more coins on the track.";
-                case "ninjapanda": return "Every fourth hit deals " + (2 + tier * .25f).ToString("0.##", System.Globalization.CultureInfo.InvariantCulture) + "x damage.";
+                case "dragon": return "Every hit deals " + Percent(flameDamage[Tier(stage)]*100) + "% extra flame damage.";
+                case "shark": return "Each 10 power collected heals " + Number(tidalHealPerPower[Tier(stage)]*10) + " HP.";
+                case "slime": return "Each hit adds " + Percent(venomDamagePerHit[Tier(stage)]*100) + "% venom damage, stacking up to 5 hits.";
+                case "trex": return "Take " + Percent(stoneDamageReduction[Tier(stage)]*100) + "% less damage from every hit.";
+                case "panda": return "Start each run with a barrier that absorbs " + frostBarrier[Tier(stage)] + " damage.";
+                case "sharkdragon": return "Every third hit deals " + Percent(stormDamageBonus[Tier(stage)]*100) + "% extra lightning damage.";
+                case "cyberrex": return "Collect " + coinBonus[Tier(stage)] + "% more coins on the track.";
+                case "ninjapanda": return "Every fourth hit deals " + Number(shadowDamage[Tier(stage)]) + "x damage.";
                 default: return "Train your dragon to strengthen its unique power.";
             }
         }

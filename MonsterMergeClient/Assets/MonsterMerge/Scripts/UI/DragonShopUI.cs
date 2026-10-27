@@ -73,7 +73,7 @@ namespace MonsterMerge
             int nextCost=app.Save.UpgradeCost(dragon.id);
             string details=!owned?"Begin your journey together as a Hatchling.":stage>=4?"Ancient form reached. Your dragon is at full strength.":shown>stage
                 ?"CURRENT: "+DragonProgression.PowerDescription(dragon,stage)+"\nSTAGE "+shown+": "+DragonProgression.PowerDescription(dragon,shown)
-                :"NEXT STAGE BOOST: "+DragonProgression.PowerUpgradeDelta(dragon.id);
+                :"NEXT STAGE BOOST: "+DragonProgression.PowerUpgradeDelta(dragon.id,stage,stage+1);
             TextAt(details,.075f,.298f,.85f,.075f,12,shown>stage?Mint:Color.white);
             if(!owned)
                 ButtonAt("BUY / "+dragon.unlockCost.ToString("N0")+" COINS",.09f,.22f,.82f,.065f,()=>ConfirmDragonPurchase(dragon,false),Gold);
@@ -108,7 +108,7 @@ namespace MonsterMerge
                 TextAt("UPGRADE "+dragon.displayName,.07f,.615f,.86f,.04f,23,Color.white).fontStyle=FontStyle.Bold;
                 TextAt(DragonProgression.VisualUpgrade(dragon.id,to),.07f,.58f,.86f,.028f,12,Gold);
                 DrawUpgradePowerComparison(dragon,from,to,.40f,.15f);
-                TextAt("POWER BOOST: "+DragonProgression.PowerUpgradeDelta(dragon.id),.07f,.365f,.86f,.027f,12,Mint);
+                TextAt("POWER BOOST: "+DragonProgression.PowerUpgradeDelta(dragon.id,from,to),.07f,.365f,.86f,.027f,12,Mint);
                 TextAt(UpgradeStatComparison(dragon,from,to),.07f,.335f,.86f,.026f,11,Color.white);
                 TextAt("PRICE: "+cost.ToString("N0")+" COINS",.1f,.285f,.8f,.04f,22,Gold);
                 TextAt("Balance after upgrade: "+(app.Save.Data.coins-cost).ToString("N0")+" coins",.08f,.245f,.84f,.03f,13,Color.white);

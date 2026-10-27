@@ -44,7 +44,7 @@ namespace MonsterMerge
             if(stage<4)
             {
                 DrawUpgradePowerComparison(dragon,stage,next,.275f,.14f);
-                TextAt("POWER BOOST: "+DragonProgression.PowerUpgradeDelta(dragon.id),.07f,.244f,.86f,.027f,12,Mint);
+                TextAt("POWER BOOST: "+DragonProgression.PowerUpgradeDelta(dragon.id,stage,next),.07f,.244f,.86f,.027f,12,Mint);
                 TextAt(UpgradeStatComparison(dragon,stage,next),.07f,.215f,.86f,.026f,11,Ink);
             }
             else TextAt("ANCIENT FORM / MAX POWER",.08f,.30f,.84f,.08f,19,Gold);
@@ -85,7 +85,7 @@ namespace MonsterMerge
             TextAt(dragon.displayName+" / "+DragonProgression.StageName(toStage),.08f,.49f,.84f,.035f,17,Ink);
             TextAt(DragonProgression.VisualUpgrade(dragon.id,toStage),.08f,.46f,.84f,.025f,12,Gold);
             DrawUpgradePowerComparison(dragon,fromStage,toStage,.31f,.14f);
-            TextAt("POWER BOOST: "+DragonProgression.PowerUpgradeDelta(dragon.id),.07f,.278f,.86f,.027f,12,Mint);
+            TextAt("POWER BOOST: "+DragonProgression.PowerUpgradeDelta(dragon.id,fromStage,toStage),.07f,.278f,.86f,.027f,12,Mint);
             TextAt(UpgradeStatComparison(dragon,fromStage,toStage),.07f,.248f,.86f,.026f,11,Ink);
             TextAt("UPGRADE COST: "+cost.ToString("N0")+" COINS",.08f,.215f,.84f,.026f,11,Gold);
             ButtonAt("START LEVEL "+app.Save.Data.level,.10f,.14f,.80f,.06f,continueAction,Mint);
