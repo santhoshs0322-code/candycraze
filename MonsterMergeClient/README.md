@@ -25,3 +25,6 @@ Unlocking/upgrading without enough coins opens an offer with View Packs and Keep
 
 ## App icon
 The supplied dragon store artwork is copied to Assets/MonsterMerge/Art/AppIcon.png. AppIconBuild applies it to the default, Android legacy, round and adaptive icon slots before every Android build. Use Monster Merge > Apply Dragon App Icon to apply it in the Editor without building. Editor compilation passed; verify cropping on the target launcher after rebuilding.
+
+## Home replay button layout
+The Replay Levels / Earn Coins button has extra height and spacing on the home screen so its label is readable and does not crowd adjacent menu buttons.
