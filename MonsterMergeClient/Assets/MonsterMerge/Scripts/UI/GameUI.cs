@@ -83,10 +83,11 @@ namespace MonsterMerge
             int species=Array.IndexOf(new[]{"dragon","shark","slime","trex","panda","sharkdragon","cyberrex","ninjapanda"},id);
             if(dragonPortraitAtlas&&species>=0)
             {
-                var portrait=rect.gameObject.AddComponent<RawImage>();portrait.texture=dragonPortraitAtlas;portrait.color=tint;portrait.raycastTarget=false;
+                var imageRect=Rect("Contained anime portrait image",rect);Anchor(imageRect,0,0,1,1);
+                var portrait=imageRect.gameObject.AddComponent<RawImage>();portrait.texture=dragonPortraitAtlas;portrait.color=tint;portrait.raycastTarget=false;
                 int column=species%4,row=1-species/4;
                 portrait.uvRect=new Rect(column*.25f+.003f,row*.5f+.006f,.244f,.488f);
-                var fit=rect.gameObject.AddComponent<AspectRatioFitter>();fit.aspectMode=AspectRatioFitter.AspectMode.FitInParent;fit.aspectRatio=1.08f;
+                var fit=imageRect.gameObject.AddComponent<AspectRatioFitter>();fit.aspectMode=AspectRatioFitter.AspectMode.FitInParent;fit.aspectRatio=1.08f;
             }
             else
             {
@@ -198,13 +199,13 @@ namespace MonsterMerge
             TextAt(app.catalog.Monster(app.Save.Data.selected).displayName.ToUpperInvariant(),.06f,.36f,.88f,.56f,21,Color.white,nameplate).fontStyle=FontStyle.Bold;
             TextAt("READY FOR YOUR NEXT ADVENTURE",.06f,.04f,.88f,.30f,9,Mint,nameplate);
             ButtonAt("PLAY  /  LEVEL " + app.Save.Data.level,.08f,.269f,.84f,.073f,() => PlayLevel(app.Save.Data.level),Mint);
-            ButtonAt("REPLAY LEVELS / EARN COINS",.12f,.202f,.76f,.055f,ShowReplayLevels,Color.white);
-            ButtonAt("DRAGONS",.06f,.167f,.42f,.058f,ShowCollection,Color.white);
-            ButtonAt("POWERS",.52f,.167f,.42f,.058f,ShowLab,Color.white);
-            ButtonAt("UPGRADES",.06f,.096f,.42f,.058f,ShowUpgrades,Gold);
-            ButtonAt("DAILY TREASURE",.52f,.096f,.42f,.058f,ShowDaily,Gold);
-            ButtonAt("SHOP",.06f,.025f,.42f,.058f,ShowShop,Color.white);
-            ButtonAt("SETTINGS",.52f,.025f,.42f,.058f,ShowSettings,Color.white);
+            ButtonAt("REPLAY LEVELS / EARN COINS",.12f,.211f,.76f,.055f,ShowReplayLevels,Color.white);
+            ButtonAt("DRAGONS",.06f,.145f,.42f,.055f,ShowCollection,Color.white);
+            ButtonAt("POWERS",.52f,.145f,.42f,.055f,ShowLab,Color.white);
+            ButtonAt("UPGRADES",.06f,.078f,.42f,.055f,ShowUpgrades,Gold);
+            ButtonAt("DAILY TREASURE",.52f,.078f,.42f,.055f,ShowDaily,Gold);
+            ButtonAt("SHOP",.06f,.011f,.42f,.055f,ShowShop,Color.white);
+            ButtonAt("SETTINGS",.52f,.011f,.42f,.055f,ShowSettings,Color.white);
         }
         RectTransform ScrollContent()
         {
